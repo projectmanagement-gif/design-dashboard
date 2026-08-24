@@ -29,7 +29,7 @@ h3{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--gol
 .live.err{color:var(--crit)} .live.err i{background:var(--crit);animation:none}
 .risk{border-left:4px solid var(--crit);background:var(--shade);padding:12px 15px;margin:18px 0 20px;font-size:13.5px;line-height:1.65}
 .risk b{color:var(--crit)}
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin:16px 0 6px}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:16px 0 6px}
 @media(max-width:980px){.kpis{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:600px){.kpis{grid-template-columns:repeat(2,1fr)}}
 .kpi{background:var(--s1);border:1px solid var(--border);border-top:4px solid var(--gold);border-radius:4px;padding:11px 10px;text-align:center}
@@ -178,10 +178,12 @@ var PROG_OPEN   = ["In Progress"];                  // moodboard open
 var PROG_ONTIME = ["Completed"];                    // on-time is judged on these
 
 /* Column X, "NDS Approved / R0", is what the sheet's own TAT and Delay Days
-   formulas use as the actual moodboard-closure date. So a home with a date in
-   that column counts as MB closed even if PROGRESS has not caught up yet.
-   Set false to go back to PROGRESS alone. */
-var MB_CLOSED_ALSO_NDS = true;
+   formulas close against, so it is used as the moodboard-closure DATE throughout.
+   Whether it should ALSO reclassify a home as closed when PROGRESS still says
+   "In Progress" is a separate question - currently no: PROGRESS alone decides the
+   closed/open split, exactly as specified. Set true to let NDS sign-off count too
+   (that moves 14 homes from open to closed). */
+var MB_CLOSED_ALSO_NDS = false;
 
 /* Financial year window for the "MB crossed due date" KPI. */
 var FY_FROM = [2026,3,1];    // 1 Apr 2026  (month is 0-based: 3 = April)
@@ -409,36 +411,31 @@ function renderKpis(rows){
  var od=rows.filter(function(r){return r._od}).length;
  /* KPI 2 - moodboard done, per the PROGRESS column */
  var done=rows.filter(function(r){return r._mbclosed});
- var doneP=rows.filter(function(r){return r._closedByProg}).length;
- var doneN=rows.filter(function(r){return r._closedByNds}).length;
+ var doneA=rows.filter(function(r){return r._prog==="Completed"}).length;
+ var doneB=rows.filter(function(r){return r._prog==="Post MB Closure"}).length;
  /* KPI 3 - moodboard open */
  var open=rows.filter(function(r){return r._mbopen});
  var withSales=rows.filter(function(r){return !r._mbclosed && /^in progress\b/i.test(r._prog) && PROG_OPEN.indexOf(r._prog)<0}).length;
- /* Open moodboards already past their projected TAT, per the sheet's Delay Days */
- var overNow=rows.filter(function(r){return !r._mbclosed && r._delay!==null && r._delay>0});
- var overAvg=overNow.length?overNow.reduce(function(a,r){return a+r._delay},0)/overNow.length:0;
- var overMax=overNow.length?Math.max.apply(null,overNow.map(function(r){return Math.round(r._delay)})):0;
- /* KPI 4 - projected MB closure falling inside the FY window */
+ /* KPI 4 - projected MB closure inside the FY window, delay from Delay Days */
  var fy=rows.filter(function(r){return r._inFY});
  var fyDelays=fy.filter(function(r){return r._delay!==null});
  var fyAvg=fyDelays.length?fyDelays.reduce(function(a,r){return a+r._delay},0)/fyDelays.length:null;
  var fyLate=fyDelays.filter(function(r){return r._delay>0}).length;
- /* KPI 5 - on time, judged only on PROGRESS = Completed */
- var comp=rows.filter(function(r){return PROG_ONTIME.indexOf(r._prog)>=0});
- var compM=comp.filter(function(r){return r._ontime!==null});
- var pct=compM.length?Math.round(100*compM.filter(function(r){return r._ontime}).length/compM.length):null;
+ /* KPI 5 - of the KPI-2 set, how many closed with Delay Days <= 0 */
+ var compM=done.filter(function(r){return r._delay!==null});
+ var onT=compM.filter(function(r){return r._delay<=0}).length;
+ var pct=compM.length?Math.round(100*onT/compM.length):null;
+ var noDD=done.length-compM.length;
  var cards=[
   ["Live homes",tot,"<b>"+sold+"</b> sold<br><b>"+(tot-sold)+"</b> unsold past PC","var(--ink)"],
-  ["MB closed (Ops)",done.length,"<b>"+doneP+"</b> by PROGRESS<br><b>"+doneN+"</b> more by NDS sign-off","var(--good)"],
+  ["MB closed (Ops)",done.length,"<b>"+doneA+"</b> completed<br><b>"+doneB+"</b> post MB closure","var(--good)"],
   ["MB open",open.length,"PROGRESS = In Progress<br><b>"+withSales+"</b> more are with sales","var(--warn)"],
-  ["Open &amp; already over",overNow.length,
-    (overNow.length?"<b>+"+Math.round(overAvg)+"d</b> average, worst +"+overMax+"d":"none past their TAT")+
-    "<br>by the sheet’s Delay Days","var(--gold)"],
   ["MB crossed due date "+FY_LABEL,fy.length,
-    (fyAvg===null?"no TAT data":"<b>"+(fyAvg>0?"+":"")+Math.round(fyAvg*10)/10+"d</b> average delay")+
+    (fyAvg===null?"no Delay Days data":"<b>"+(fyAvg>0?"+":"")+Math.round(fyAvg*10)/10+"d</b> avg Delay Days")+
     "<br><b>"+fyLate+"</b> ran late","var(--crit)"],
   ["Closed on time",pct===null?"&mdash;":pct+"%",
-    "of <b>"+comp.length+"</b> completed<br>"+compM.length+" measurable","var(--blue)"]];
+    "<b>"+onT+"</b> of "+compM.length+" closed had<br>Delay Days &le; 0"+
+    (noDD?" · "+noDD+" unmeasurable":""),"var(--blue)"]];
  document.getElementById("kpis").innerHTML=cards.map(function(c){
   return '<div class="kpi" style="border-top-color:'+c[3]+'"><div class="l">'+c[0]+'</div>'+
    '<div class="v" style="color:'+c[3]+'">'+c[1]+'</div><div class="sp">'+c[2]+'</div></div>'}).join("");
@@ -449,8 +446,9 @@ function renderKpis(rows){
   'CC sits before PC on the ops ladder, so Unsold homes at CC or Construction Not Started are out. '+
   'Homes with a blank or NA Sold/Unsold status are out. '+
   '<b>MB closed</b> = PROGRESS is '+PROG_CLOSED.join(" or ")+
-  (MB_CLOSED_ALSO_NDS?', <b>or</b> the home has a date in <b>NDS Approved / R0</b> (column X) &mdash; that is the column your own TAT and Delay Days formulas close against, so a home NDS has signed off counts as closed even where PROGRESS has not caught up':'')+
-  '. <b>MB open</b> = PROGRESS is '+PROG_OPEN.join(" or ")+' and not closed by the above. '+
+  (MB_CLOSED_ALSO_NDS?', <b>or</b> the home has a date in <b>NDS Approved / R0</b> (column X)':'')+
+  '. <b>MB open</b> = PROGRESS is '+PROG_OPEN.join(" or ")+'. '+
+  '<b>Closed on time</b> = of the MB-closed set, the share whose <b>Delay Days</b> is 0 or negative. '+
   '<b>Due date</b> = <b>MB Closure PROJECTED</b>, falling back to MIN(Brief + '+SLA_DAYS+'d, PC Date) where that is blank. '+
   '<b>Delay</b> comes from the sheet’s own <b>Delay Days</b> column (ACTUAL MB Closure TAT &minus; Projected MB Closure TAT), '+
   'which keeps running on open moodboards &mdash; a negative value means days of runway still left, positive means already over. '+
@@ -510,9 +508,8 @@ function renderPodLoad(rows){
 function renderHo(rows){
  var by={},none=0,later=0,past=0;
  var lim=new Date(TODAY.getFullYear(),TODAY.getMonth()+9,1);
- var flr=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
  rows.forEach(function(r){ if(!r._ho){none++;return}
-  if(r._ho<flr){past++;return}          // past dates are counted but not shown
+  if(r._ho<=TODAY){past++;return}       // strictly future only; past counted, not shown
   if(r._ho>=lim){later++;return}
   var k=r._ho.getFullYear()*12+r._ho.getMonth(); by[k]=(by[k]||0)+1});
  var M=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -524,9 +521,10 @@ function renderHo(rows){
  if(later){tot+=later; h+='<tr><td>Later</td><td class="n" style="font-weight:700">'+later+'</td></tr>'}
  if(none){tot+=none; h+='<tr><td class="w">No handover date</td><td class="n w">'+none+'</td></tr>'}
  h+='<tr style="font-weight:800;border-top:2px solid var(--base)"><td>Total</td><td class="n">'+tot+'</td></tr>';
- h+='</tbody></table><div class="sm" style="margin-top:6px">Upcoming handovers only, from the <b>Handover Date</b> column. '+
+ h+='</tbody></table><div class="sm" style="margin-top:6px">Handovers still ahead of today only. '+
+    'Reads <b>Handover Date ACTUAL</b>, falling back to <b>Handover Date BUDGETED</b> where ACTUAL is blank or &ldquo;-&rdquo;. '+
     'Months beyond the next nine fold into "Later". '+
-    (past?past+' home'+(past>1?"s have":" has")+' a handover date already in the past &mdash; not shown here.':'')+'</div>';
+    (past?'<b>'+past+'</b> home'+(past>1?"s have":" has")+' a handover date on or before today &mdash; not shown here.':'')+'</div>';
  document.getElementById("hofc").innerHTML=h;
 }
 
