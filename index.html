@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Interior Design · Daily Team Performance</title>
+<style>
+:root{color-scheme:light;
+ --s1:#fcfcfb;--plane:#f9f9f7;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--grid:#e1e0d9;--base:#c3c2b7;
+ --gold:#a9884f;--good:#0f8a3c;--warn:#b57f10;--crit:#c0392b;--blue:#2a78d6;--border:rgba(11,11,11,.10);--shade:#f4f3ef}
+@media(prefers-color-scheme:dark){:root:where(:not([data-theme=light])){color-scheme:dark;
+ --s1:#1a1a19;--plane:#0d0d0d;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--base:#383835;
+ --good:#3fbf6a;--warn:#e0a92e;--crit:#e8695a;--blue:#3987e5;--border:rgba(255,255,255,.10);--shade:#242422}}
+:root[data-theme=dark]{color-scheme:dark;--s1:#1a1a19;--plane:#0d0d0d;--ink:#fff;--ink2:#c3c2b7;--grid:#2c2c2a;--base:#383835;
+ --good:#3fbf6a;--warn:#e0a92e;--crit:#e8695a;--blue:#3987e5;--border:rgba(255,255,255,.10);--shade:#242422}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 22px 70px;background:var(--s1);border-left:1px solid var(--border);border-right:1px solid var(--border);min-height:100vh}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:3px solid var(--gold);padding-bottom:10px;flex-wrap:wrap}
+.kick{font-size:10px;letter-spacing:.19em;color:var(--muted);font-weight:700}
+h1{font-family:Georgia,"Times New Roman",serif;font-size:30px;margin:14px 0 3px;letter-spacing:-.01em;font-weight:700}
+h2{font-family:Georgia,"Times New Roman",serif;font-size:20px;margin:34px 0 4px;padding-bottom:5px;border-bottom:1px solid var(--base)}
+h3{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);font-weight:800;margin:0 0 8px}
+.sub{font-size:12.5px;color:var(--ink2)}
+.note{font-size:11.5px;color:var(--ink2);margin:6px 0 14px;line-height:1.6}
+.btn{background:var(--s1);border:1px solid var(--border);color:var(--ink2);border-radius:7px;padding:6px 11px;font-size:11.5px;cursor:pointer;font-weight:700}
+.btn:hover{border-color:var(--gold);color:var(--ink)}
+.live{display:inline-flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--good)}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.live.stale{color:var(--warn)} .live.stale i{background:var(--warn)}
+.live.err{color:var(--crit)} .live.err i{background:var(--crit);animation:none}
+.risk{border-left:4px solid var(--crit);background:var(--shade);padding:12px 15px;margin:18px 0 20px;font-size:13.5px;line-height:1.65}
+.risk b{color:var(--crit)}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin:16px 0 6px}
+@media(max-width:980px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--s1);border:1px solid var(--border);border-top:4px solid var(--gold);border-radius:4px;padding:11px 10px;text-align:center}
+.kpi .l{font-size:8.7px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:800;line-height:1.35;min-height:24px}
+.kpi .v{font-family:Georgia,"Times New Roman",serif;font-size:33px;font-weight:700;margin:5px 0 4px;letter-spacing:-.02em}
+.kpi .sp{border-top:1px dashed var(--base);padding-top:5px;font-size:10.5px;color:var(--ink2);line-height:1.5}
+.kpi .sp b{color:var(--ink);font-weight:700}
+.scope{font-size:11px;color:var(--ink2);background:var(--shade);border-radius:5px;padding:9px 12px;line-height:1.65;margin-bottom:4px}
+.filters{display:flex;gap:7px;flex-wrap:wrap;align-items:center;border:1px solid var(--border);border-radius:7px;padding:9px 11px;margin:16px 0 4px;background:var(--shade)}
+.filters label{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:800}
+select,input[type=search],input[type=password]{background:var(--s1);border:1px solid var(--border);color:var(--ink);border-radius:5px;padding:5px 8px;font-size:12px;font-family:inherit;max-width:190px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px;margin-top:12px}
+@media(max-width:940px){.three{grid-template-columns:1fr}}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:800;padding:7px 7px;border-bottom:1.5px solid var(--base);white-space:nowrap;vertical-align:bottom}
+td{padding:7px 7px;border-bottom:1px solid var(--grid);vertical-align:middle}
+td.n,th.n{text-align:center;font-variant-numeric:tabular-nums}
+.grp{background:var(--shade);border-left:3px solid var(--gold)}
+.grp td{font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);font-weight:800;padding:7px 8px}
+.band{border-left:1px solid var(--base)}
+.g{color:var(--good);font-weight:700}.w{color:var(--warn);font-weight:700}.r{color:var(--crit);font-weight:700}
+.dash{color:var(--muted)}
+.sm{font-size:10px;color:var(--muted);font-weight:600}
+.pill{font-size:9px;font-weight:800;letter-spacing:.05em;padding:2px 7px;border-radius:3px;text-transform:uppercase}
+.clk{cursor:pointer}
+.clk:hover{background:var(--shade)}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:860px){.cards{grid-template-columns:1fr}}
+.card{border:1px solid var(--border);border-radius:6px;padding:13px 15px}
+.card h4{margin:0 0 9px;font-size:12.5px;color:var(--muted);font-weight:700;letter-spacing:.02em}
+.theme{margin:0 0 12px}
+.theme .t{font-weight:700;font-size:12.5px}
+.theme .homes{font-size:11.5px;color:var(--blue);margin:2px 0}
+.theme .why{font-size:11.5px;color:var(--ink2)}
+.gapgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:860px){.gapgrid{grid-template-columns:1fr}}
+.gap{border:1px solid var(--border);border-radius:6px;padding:10px 13px}
+.gap .nm{color:var(--gold);font-weight:800;font-size:12.5px}
+.gap .d{color:var(--warn);font-size:11.5px;font-weight:600;margin-top:3px}
+.bar{background:var(--shade);border-radius:3px;height:9px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold)}
+.mini{font-size:11.5px}
+.mini th{font-size:8.5px;border-bottom:1px solid var(--base)}
+.mini td{padding:5px 6px;border-bottom:1px solid var(--grid)}
+.err{background:#fdecea;border:1px solid #f5c6c2;color:#8b2b22;padding:12px 14px;border-radius:6px;font-size:13px;margin:14px 0}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--s1);font-size:11.5px;padding:7px 10px;border-radius:5px;opacity:0;transition:opacity .1s;z-index:99;max-width:360px;line-height:1.5}
+#gate{position:fixed;inset:0;background:var(--plane);display:none;align-items:center;justify-content:center;z-index:200;flex-direction:column;gap:12px}
+footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--base);font-size:10.5px;color:var(--muted);line-height:1.7}
+</style></head><body>
+<div id="gate"><div class="kick">ISPRAVA · DESIGN INTELLIGENCE</div>
+ <input type="password" id="gpass" placeholder="passcode" style="max-width:220px;text-align:center">
+ <button class="btn" id="gbtn">Open dashboard</button>
+ <div class="sm" id="gmsg"></div></div>
+
+<div class="wrap">
+ <div class="topbar">
+  <div class="kick">ISPRAVA · DESIGN INTELLIGENCE</div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+   <span class="live" id="live"><i></i><span id="livetxt">CONNECTING</span></span>
+   <span class="kick" id="stamp"></span>
+   <button class="btn" id="theme">&#9681;</button><button class="btn" id="refresh">&#8635; Refresh</button></div>
+ </div>
+ <h1>Interior Design &middot; Daily Team Performance</h1>
+ <div class="sub" id="subline">Loading live data from the sheet&hellip;</div>
+ <div id="msg"></div>
+ <div class="risk" id="risk"></div>
+ <div class="kpis" id="kpis"></div>
+ <div class="scope" id="scope"></div>
+
+ <div class="filters">
+  <label>POD</label><select id="fPod"></select>
+  <label>RH</label><select id="fRh"></select>
+  <label>ID Lead</label><select id="fLead"></select>
+  <label>DLG POC</label><select id="fDlg"></select>
+  <label>Sold</label><select id="fSold"></select>
+  <label>Stage</label><select id="fPhase"></select>
+  <input type="search" id="fQ" placeholder="search home / property / remark&hellip;">
+  <button class="btn" id="clear">Clear</button>
+  <span style="margin-left:auto;font-size:11px;color:var(--ink2)" id="count"></span>
+ </div>
+
+ <h2>Portfolio at a glance</h2>
+ <div class="three">
+  <div><h3>Where the pipeline sits</h3><div id="phase"></div></div>
+  <div><h3>Load by POD</h3><div id="podload"></div></div>
+  <div><h3>Handover forecast</h3><div id="hofc"></div></div>
+ </div>
+
+ <h2>Design Status &mdash; the full ladder</h2>
+ <div class="note" id="dsNote"></div>
+ <div class="scroll"><table id="dsTbl"></table></div>
+
+ <h2>DLG team &mdash; moodboard closure</h2>
+ <div class="note" id="dlgNote"></div>
+ <div class="scroll"><table id="dlgTbl"></table></div>
+
+ <h2>Homes each DLG POC is working on</h2>
+ <div class="note">Every in-scope home carrying that POC's name, most overdue first. <b>Overdue</b> is days past the <b>MB Due Date</b> with the moodboard still not closed. Click a name to open the list, or click a row in the table above to jump here.</div>
+ <div id="pocHomes"></div>
+
+ <h2>ID-DM designers &mdash; by POD</h2>
+ <div class="note" id="iddmNote"></div>
+ <div class="scroll"><table id="iddm"></table></div>
+
+ <h2>Leadership support &mdash; where an RH can help move things along</h2>
+ <div class="note">Read from the <b>Remarks</b> and <b>Client Requirements</b> columns, grouped into themes by regional head. Framed as requests for a gentle nudge, not escalations. A home can appear under more than one theme.</div>
+ <div class="cards" id="leadership"></div>
+
+ <h2>Data still to be filled in the sheet &mdash; by ID lead</h2>
+ <div class="note">These gaps quietly keep homes out of tracking. A quick backfill by each lead would make the numbers above complete.</div>
+ <div class="gapgrid" id="gaps"></div>
+
+ <footer id="foot"></footer>
+</div>
+<div class="tip" id="tip"></div>
+<script>
+/* ================================================================
+   CONFIG  -  the only block you normally need to touch
+   ================================================================ */
+var SHEET_ID = "1lWfn0-CMxT_8kfn2U494hnrzAVbsizv6vmpLXUPshWI";
+var TAB_GID  = "960445089";          // MASTER TRACKER 2.0
+var TAB_NAME = "MASTER TRACKER 2.0"; // shown in the footer only
+
+var SLA_DAYS      = 70;   // 2wk Ext.ID + 4wk ideation + 4wk moodboard (from your LEGEND tab)
+var AMBER_WINDOW  = 7;    // days before MB Due Date that turns a home Amber
+var LOAD_BANDS    = {high:8, moderate:5};
+var AUTO_REFRESH_MIN = 10;           // re-read the sheet every N minutes. 0 = off.
+
+/* SCOPE - Sold (any Ops stage) + Unsold that is past PC. */
+var OPS_PAST_PC   = ["PC","GF","FF","SS","CC","CINT","INT","HO"];
+
+/* Handed-over homes are dropped from every KPI, table and chart on this page,
+   because design work on them is finished and they otherwise flatter the numbers.
+   A home counts as handed over if EITHER signal says so:
+     - Project Stage Ops = HO, or
+     - Design Status is one of HANDOVER_STATUSES below.
+   The two signals disagree on a handful of homes, so we take the union.
+   Set EXCLUDE_HANDED_OVER to false to bring them all back in. */
+var EXCLUDE_HANDED_OVER = true;
+var HANDOVER_STATUSES   = [22,23,24,25];  // Snagging Ongoing, Lohono HO, Client HO, Post-HO Snagging
+var HANDOVER_OPS        = ["HO"];
+
+var RH_HIDE       = [];   // e.g. ["Sanjay"] to hide an RH from Leadership support
+
+/* Optional passcode. "" = no gate. NOTE: this is a speed bump against a
+   forwarded link, NOT security - anyone can read it in View Source. */
+var PASSCODE = "";
+
+/* Spelling variants that mean the same person (left side lowercase). */
+var ALIAS = {
+ "margaux godet":"Margaux","margux":"Margaux",
+ "karolin":"Karoline","karoline schlinke":"Karoline",
+ "zahra takhar":"Zahra",
+ "khara":"Abhishek Khara","abhishel khara":"Abhishek Khara","abhishek":"Abhishek Khara",
+ "sheena rawla":"Sheena",
+ "pallavi j.":"Pallavi","pallavi jaiswal":"Pallavi",
+ "carl motiwalla":"Carl","carl - dlg":"Carl",
+ "priyanka":"Priyanka Jadhav",
+ "aalisha":"Alisha","alaisha":"Alisha",
+ "henna patel":"Heena",
+ "jyoti goswami":"Jyoti","nishi wadia":"Nishi","kalpita kubal":"Kalpita"
+};
+
+/* ================================================================ */
+var RAW=[], Q=[], VIEW=[], HANDED=[], FETCHED=null, TIMER=null;
+var tip=document.getElementById("tip");
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function T(v){return String(v==null?"":v).trim()}
+function num(n){return n===0?'<span class="dash">&mdash;</span>':n}
+function showTip(e,h){tip.innerHTML=h;tip.style.opacity=1;var x=e.clientX+14,y=e.clientY+14;
+ if(x+370>innerWidth)x=Math.max(6,e.clientX-370); if(y+140>innerHeight)y=Math.max(6,e.clientY-140);
+ tip.style.left=x+"px";tip.style.top=y+"px"}
+function hideTip(){tip.style.opacity=0}
+function bindTips(sel){[].forEach.call(document.querySelectorAll(sel),function(el){
+ if(!el.dataset.t)return; el.onmousemove=function(e){showTip(e,esc(el.dataset.t))}; el.onmouseleave=hideTip})}
+
+/* ---------- CSV ---------- */
+function parseCSV(text){
+ var rows=[],row=[],cur="",q=false,i,c;
+ for(i=0;i<text.length;i++){ c=text.charAt(i);
+  if(q){ if(c==='"'){ if(text.charAt(i+1)==='"'){cur+='"';i++} else q=false } else cur+=c }
+  else if(c==='"')q=true;
+  else if(c===','){row.push(cur);cur=""}
+  else if(c==='\r'){}
+  else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur=""}
+  else cur+=c }
+ if(cur!==""||row.length){row.push(cur);rows.push(row)}
+ return rows}
+
+/* Field list: key, header text it should START with, and the column it
+   normally lives in. If someone inserts a column, the name match wins. */
+var FIELDS=[
+ ["sr","sr no",0],["prop","property",1],["proj","project name",2],["home","ops home name",3],
+ ["ptype","project type",4],["sold","sold/ unsold",5],["clientinfo","client info",6],["salespoc","sales poc",7],
+ ["pod","pod",8],["rh","rh",9],["iddm","id-dm",10],["lead","id lead",11],
+ ["extid","external consultant - interior",12],["extgfc","external consultant - gfc",13],
+ ["dlg","dlg poc - moodboard",14],["dlgstyle","dlg poc - styling",15],["mblink","moodboard link",16],
+ ["ds","design status",17],["dschanged","status changed on",18],
+ ["brief","brief date",19],["extidact","ext. id / wo released",20],["ideation","ideation closed",21],
+ ["mbfirst","mb first cut",22],["nds","nds approved",23],["mbsales","mb shared with sales",24],
+ ["cxappr","client approved",25],["mbver","mb versions",26],["mbclosed","final mb closed",27],
+ ["pc","pc date",28],["pextid","ext. id appointed",29],["pideation","ideation closure",30],["pmb","mb closure",31],
+ ["daysupd","days from last update",32],["ptat","projected mb closure tat",33],["atat","actual mb closure tat",34],
+ ["delayp","delay (basis projected)",35],["delaya","delay (basis actual)",36],["rag","rag",37],
+ ["ops","project stage ops",38],["pri","project priority",39],["ho","handover date",40],
+ ["hopoc","dlg poc - handover",41],["rem","remarks",42],["req","client requirements",43]];
+
+function buildMap(hdr){
+ var norm=hdr.map(function(h){return T(h).replace(/\s+/g," ").toLowerCase()});
+ var M={};
+ FIELDS.forEach(function(f){
+  var best=-1,bestd=1e9;
+  norm.forEach(function(h,i){ if(h && h.indexOf(f[1])===0){var d=Math.abs(i-f[2]); if(d<bestd){bestd=d;best=i}} });
+  M[f[0]] = best>=0 ? best : f[2];
+ });
+ return M}
+
+function rowsToObjects(grid){
+ var hi=0,i;
+ for(i=0;i<Math.min(6,grid.length);i++){
+  var j=grid[i].join("|").toLowerCase();
+  if(j.indexOf("design status")>=0 && j.indexOf("property")>=0){hi=i;break} }
+ var M=buildMap(grid[hi]);
+ var out=[];
+ for(i=hi+1;i<grid.length;i++){
+  var g=grid[i]; if(!g||!g.join("").replace(/\s/g,""))continue;
+  var o={},k; for(k in M) o[k]=T(g[M[k]]);
+  if(!o.prop && !o.home && !o.proj)continue;
+  out.push(o) }
+ return out}
+
+/* ---------- dates ---------- */
+var MON={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function pd(v){
+ v=T(v); if(!v)return null;
+ if(/^(na|n\/a|-|tbd|wip|yet to start|#value!|#ref!|#n\/a|#div\/0!)$/i.test(v))return null;
+ var m=v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m)return new Date(+m[1],+m[2]-1,+m[3]);
+ m=v.match(/^(\d{1,2})[-\/.]([A-Za-z]{3})[A-Za-z]*[-\/.](\d{2,4})/);
+ if(m&&MON[m[2].toLowerCase()]!==undefined){var y2=+m[3]; if(y2<100)y2+=2000; return new Date(y2,MON[m[2].toLowerCase()],+m[1])}
+ m=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(m)return new Date(+m[3],+m[1]-1,+m[2]);
+ m=v.match(/^(\d{1,2})[-.](\d{1,2})[-.](\d{2,4})/);
+ if(m){var y=+m[3]; if(y<100)y+=2000; return new Date(y,+m[2]-1,+m[1])}
+ m=v.match(/^(\d{1,2})(?:st|nd|rd|th)?[ ]([A-Za-z]{3})[A-Za-z]*[ ,]+(\d{4})/);
+ if(m&&MON[m[2].toLowerCase()]!==undefined)return new Date(+m[3],MON[m[2].toLowerCase()],+m[1]);
+ var d=new Date(v); return isNaN(d.getTime())?null:d}
+var TODAY=(function(){var d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate())})();
+function dd(a,b){return Math.round((a-b)/86400000)}
+function addDays(d,n){return new Date(d.getFullYear(),d.getMonth(),d.getDate()+n)}
+function fmtd(d){if(!d)return"";var M=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+ return d.getDate()+" "+M[d.getMonth()]+" "+String(d.getFullYear()).slice(2)}
+function tatTxt(v){if(v===null||v===undefined)return '<span class="dash">&mdash;</span>';
+ var r=Math.round(v*10)/10; return '<span class="'+(r>0?"r":"g")+'">'+(r>0?"+":"")+r+"d</span>"}
+
+/* ---------- Design Status ladder ---------- */
+var PHASES=[
+ {k:"await",   t:"Awaiting sale intimation",   test:function(p,n){return p==="000"}},
+ {k:"notstart",t:"Not started",                test:function(p,n){return p==="00"}},
+ {k:"onboard", t:"Ext. ID / DLG onboarding",   test:function(p,n){return n===1}},
+ {k:"ideation",t:"Ideation",                   test:function(p,n){return n>=2&&n<=7}},
+ {k:"mb",      t:"Moodboard (internal)",       test:function(p,n){return n>=8&&n<=12}},
+ {k:"client",  t:"With sales / client",        test:function(p,n){return n>=13&&n<=17}},
+ {k:"mbdone",  t:"MB closed",                  test:function(p,n){return n===18}},
+ {k:"gfc",     t:"GFC / Indent",               test:function(p,n){return n===19}},
+ {k:"styling", t:"Styling",                    test:function(p,n){return n===20||n===21}},
+ {k:"handover",t:"Handover / snagging",        test:function(p,n){return n>=22&&n<=25}},
+ {k:"hold",    t:"Site WIP - styling on hold", test:function(p,n){return n===26}},
+ {k:"nomb",    t:"MB not required",            test:function(p,n){return n===27}},
+ {k:"blank",   t:"No status entered",          test:function(p,n){return p===null}}
+];
+function phaseOf(v){
+ var s=T(v), m=s.match(/^(\d+)\s*\./);
+ var p=m?m[1]:null, n=m?parseInt(m[1],10):-1;
+ for(var i=0;i<PHASES.length;i++) if(PHASES[i].test(p,n))return PHASES[i];
+ return {k:"other",t:"Other"}}
+function dsOrder(v){var m=T(v).match(/^(\d+)\s*\./); if(!m)return 999;
+ return m[1]==="000" ? -1 : parseInt(m[1],10)}
+/* The moodboard counts as closed at "18. Final MB Closed" and everything after it. */
+function mbIsClosed(r){var o=dsOrder(r.ds); return o>=18 && o!==999}
+
+function splitNames(v){v=T(v); if(!v||/^(na|n\/a|yes|inhouse)$/i.test(v))return [];
+ return v.split(/\s*[\/&,]\s*/).map(T).filter(function(x){return x&&!/^(na|n\/a)$/i.test(x)})
+  .map(function(x){return ALIAS[x.toLowerCase()]||x})}
+function oneName(v){var a=splitNames(v);return a.length?a[0]:""}
+
+/* ---------- scope + derived fields ---------- */
+/* The Sold / Unsold-past-PC rule, before handovers are taken out. */
+function baseScope(r){
+ var s=T(r.sold), ops=T(r.ops).toUpperCase();
+ if(s==="Sold")return true;
+ if(s==="Unsold")return OPS_PAST_PC.indexOf(ops)>=0;
+ return false}
+/* Handed over by either signal. */
+function isHandedOver(r){
+ if(HANDOVER_OPS.indexOf(T(r.ops).toUpperCase())>=0)return true;
+ return HANDOVER_STATUSES.indexOf(r._ord)>=0}
+
+function enrich(r){
+ r._brief=pd(r.brief); r._pc=pd(r.pc); r._closed=pd(r.mbclosed); r._ho=pd(r.ho);
+ r._chg=pd(r.dschanged);
+ /* MB Due = MIN(Brief + SLA, PC Date) - straight from your LEGEND tab */
+ var a=r._brief?addDays(r._brief,SLA_DAYS):null, b=r._pc;
+ r._due = (a&&b) ? (a<b?a:b) : (a||b||null);
+ r._phase=phaseOf(r.ds); r._ord=dsOrder(r.ds);
+ r._mbclosed=mbIsClosed(r);
+ r._tat=(r._brief&&r._closed)?dd(r._closed,r._brief):null;
+ r._ontime=(r._closed&&r._due)?(r._closed<=r._due):null;
+ r._overdue=(r._due&&!r._mbclosed&&TODAY>r._due)?dd(TODAY,r._due):0;
+ r._od=r._overdue>0;
+ r._nodue=(!r._due&&!r._mbclosed);
+ r._stale=r._chg?dd(TODAY,r._chg):null;
+ r._rag = r._mbclosed ? "closed" : !r._due ? "nodue"
+        : TODAY>r._due ? "red" : dd(r._due,TODAY)<=AMBER_WINDOW ? "amber" : "green";
+ r._pocs=splitNames(r.dlg);
+ r._iddm=oneName(r.iddm)||T(r.iddm);
+ r._label=T(r.home)||T(r.proj)||T(r.prop)||"(unnamed)";
+ r._sold=T(r.sold);
+ return r}
+
+/* ================================================================
+   RENDER
+   ================================================================ */
+function renderKpis(rows){
+ var tot=rows.length, sold=rows.filter(function(r){return r._sold==="Sold"}).length;
+ var closed=rows.filter(function(r){return r._mbclosed}).length;
+ var od=rows.filter(function(r){return r._od}).length;
+ var stalled=rows.filter(function(r){return !r._mbclosed && r._stale!==null && r._stale>90}).length;
+ var withClient=rows.filter(function(r){return r._phase.k==="client"}).length;
+ var onTimeSet=rows.filter(function(r){return r._ontime!==null});
+ var onTime=onTimeSet.filter(function(r){return r._ontime}).length;
+ var pct=onTimeSet.length?Math.round(100*onTime/onTimeSet.length):null;
+ var cards=[
+  ["Live homes",tot,"<b>"+sold+"</b> sold<br><b>"+(tot-sold)+"</b> unsold past PC","var(--ink)"],
+  ["Moodboard closed",closed,"<b>"+Math.round(100*closed/(tot||1))+"%</b> of scope<br>status 18 and beyond","var(--good)"],
+  ["MB still open",tot-closed,"<b>"+withClient+"</b> sitting with sales/client","var(--warn)"],
+  ["Past MB due date",od,"<b>"+(od?Math.round(rows.filter(function(r){return r._od}).reduce(function(a,r){return a+r._overdue},0)/od):0)+"d</b> average slip","var(--crit)"],
+  ["Stalled 90+ days",stalled,"open MBs with no<br>status change since","var(--gold)"],
+  ["Closed on time",pct===null?"&mdash;":pct+"%",onTimeSet.length+" homes measurable","var(--blue)"]];
+ document.getElementById("kpis").innerHTML=cards.map(function(c){
+  return '<div class="kpi" style="border-top-color:'+c[3]+'"><div class="l">'+c[0]+'</div>'+
+   '<div class="v" style="color:'+c[3]+'">'+c[1]+'</div><div class="sp">'+c[2]+'</div></div>'}).join("");
+ document.getElementById("scope").innerHTML=
+  '<b>Scope:</b> every home where <b>Sold/Unsold Status = Sold</b> (any Ops stage) plus every <b>Unsold</b> home past PC '+
+  '(Ops = '+OPS_PAST_PC.join(" / ")+'). Homes with a blank or NA Sold/Unsold status, and Unsold homes still at '+
+  '"Construction Not Started", are out of scope. '+
+  (EXCLUDE_HANDED_OVER
+    ? '<b style="color:var(--gold)">'+HANDED.length+' handed-over homes are then excluded</b> from every number on this page &mdash; '+
+      'a home counts as handed over if <b>Project Stage Ops = HO</b> <i>or</i> its <b>Design Status</b> is 22&ndash;25 '+
+      '(snagging, Lohono handover, client handover, post-handover rework). The two signals disagree on a few homes, so the union is used. '+
+      'That leaves <b>'+tot+' live homes</b>. '
+    : 'Handed-over homes are currently <b>included</b> &mdash; <b>'+tot+' homes</b>. ')+
+  '<b>MB Due Date</b> = the earlier of (Brief Date + '+SLA_DAYS+' days) and the PC Date, exactly as defined on your LEGEND tab. '+
+  'A moodboard counts as closed from status <b>18. Final MB Closed</b> onwards.';
+}
+function renderRisk(rows){
+ var od=rows.filter(function(r){return r._od}).length;
+ var nobrief=rows.filter(function(r){return !r._brief}).length;
+ var stale=rows.filter(function(r){return !r._mbclosed && r._stale!==null && r._stale>60}).length;
+ var nopoc=rows.filter(function(r){return !r._mbclosed && !r._pocs.length}).length;
+ document.getElementById("risk").innerHTML=
+  '<b>Design risk today:</b> '+od+' of '+rows.length+' homes are <b>past their MB due date</b> with the moodboard still open. '+
+  stale+' have not moved status in over 60 days and '+nopoc+' open moodboards have <b>no DLG POC tagged</b>. '+
+  'Separately, <b>'+nobrief+' homes carry no Brief Date</b> &mdash; until that is filled, no turnaround time can be measured for them.';
+}
+function renderPhase(rows){
+ var by={},order=[];
+ PHASES.forEach(function(p){by[p.k]={t:p.t,n:0,od:0}; order.push(p.k)});
+ by.other={t:"Other",n:0,od:0}; order.push("other");
+ rows.forEach(function(r){var b=by[r._phase.k]||by.other; b.n++; if(r._od)b.od++});
+ var mx=Math.max.apply(null,order.map(function(k){return by[k].n}).concat([1]));
+ var h='<table><tbody>';
+ order.forEach(function(k){ var b=by[k]; if(!b.n)return;
+  h+='<tr><td style="white-space:nowrap">'+esc(b.t)+'</td>'+
+   '<td class="n" style="font-weight:700;width:40px">'+b.n+'</td>'+
+   '<td class="n r" style="width:44px">'+(b.od?b.od:'<span class="dash">&mdash;</span>')+'</td>'+
+   '<td style="width:90px"><div class="bar"><i style="width:'+(100*b.n/mx)+'%"></i></div></td></tr>'});
+ h+='</tbody></table><div class="sm" style="margin-top:6px">The 22-value <b>Design Status</b> ladder folded into phases. '+
+    'The red column counts homes in that phase already past their MB due date.</div>';
+ document.getElementById("phase").innerHTML=h;
+}
+function renderPodLoad(rows){
+ var by={};
+ rows.forEach(function(r){var k=T(r.pod)||"(no POD)"; by[k]=by[k]||{n:0,od:0,nd:0};
+  by[k].n++; if(r._od)by[k].od++;
+  if(!r._mbclosed && r._stale!==null && r._stale>90)by[k].nd++});
+ var ks=Object.keys(by).sort(function(a,b){return by[b].n-by[a].n});
+ var h='<table><thead><tr><th>POD</th><th class="n">Homes</th><th class="n">Past due</th><th class="n">Stalled</th></tr></thead><tbody>';
+ ks.forEach(function(k){h+='<tr><td><span class="pill" style="background:var(--shade);color:var(--ink2)">'+esc(k)+'</span></td>'+
+  '<td class="n" style="font-weight:700">'+by[k].n+'</td><td class="n r">'+num(by[k].od)+'</td><td class="n w">'+num(by[k].nd)+'</td></tr>'});
+ h+='</tbody></table><div class="sm" style="margin-top:6px"><b>Past due</b> = MB due date has gone by and the status is still below 18. '+
+    '<b>Stalled</b> = the moodboard is still open and <b>Status Changed On</b> has not moved in over 90 days.</div>';
+ document.getElementById("podload").innerHTML=h;
+}
+function renderHo(rows){
+ var by={},none=0,later=0,past=0;
+ var lim=new Date(TODAY.getFullYear(),TODAY.getMonth()+9,1);
+ var flr=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
+ rows.forEach(function(r){ if(!r._ho){none++;return}
+  if(r._ho<flr){past++;return}
+  if(r._ho>=lim){later++;return}
+  var k=r._ho.getFullYear()*12+r._ho.getMonth(); by[k]=(by[k]||0)+1});
+ var M=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+ var ks=Object.keys(by).map(Number).sort(function(a,b){return a-b});
+ var h='<table><tbody>';
+ if(past)h+='<tr><td class="r">Date already passed</td><td class="n r">'+past+'</td></tr>';
+ ks.forEach(function(k){h+='<tr><td>'+M[k%12]+"-"+String(Math.floor(k/12)).slice(2)+'</td><td class="n" style="font-weight:700">'+by[k]+'</td></tr>'});
+ if(later)h+='<tr><td>Later</td><td class="n" style="font-weight:700">'+later+'</td></tr>';
+ if(none)h+='<tr><td class="w">No handover date</td><td class="n w">'+none+'</td></tr>';
+ h+='</tbody></table><div class="sm" style="margin-top:6px">From the <b>Handover Date</b> column. Months beyond the next nine fold into "Later"; '+
+    'a handover date already in the past is flagged separately.</div>';
+ document.getElementById("hofc").innerHTML=h;
+}
+
+/* ---------- the full Design Status ladder ---------- */
+function renderDs(rows){
+ document.getElementById("dsNote").innerHTML=
+  'Every value of the <b>Design Status</b> dropdown that appears in the current filter, in pipeline order. '+
+  '<b>Days in stage</b> is today minus <b>Status Changed On</b> - it is the single best signal of a home that has quietly stopped moving. '+
+  'Blank where nobody has recorded a status-change date.';
+ var by={};
+ rows.forEach(function(r){ var k=T(r.ds)||"(blank)";
+  var d=by[k]||(by[k]={k:k,ord:r._ord,phase:r._phase.t,n:0,sold:0,od:0,ages:[],nodate:0});
+  d.n++; if(r._sold==="Sold")d.sold++; if(r._od)d.od++;
+  if(r._stale!==null)d.ages.push(r._stale); else d.nodate++});
+ var arr=Object.keys(by).map(function(k){var d=by[k];
+   d.avg=d.ages.length?Math.round(d.ages.reduce(function(a,b){return a+b},0)/d.ages.length):null;
+   d.max=d.ages.length?Math.max.apply(null,d.ages):null; return d})
+  .sort(function(a,b){return a.ord-b.ord});
+ var h='<thead><tr><th>Design Status</th><th>Phase</th><th class="n band">Homes</th><th class="n">Sold</th><th class="n">Unsold</th>'+
+  '<th class="n band">Past MB due</th><th class="n">Avg days in stage</th><th class="n">Longest</th><th class="n">No change date</th></tr></thead><tbody>';
+ arr.forEach(function(d){
+  h+='<tr><td style="font-weight:600;white-space:nowrap">'+esc(d.k)+'</td><td class="sm">'+esc(d.phase)+'</td>'+
+   '<td class="n band" style="font-weight:800">'+d.n+'</td><td class="n">'+num(d.sold)+'</td><td class="n">'+num(d.n-d.sold)+'</td>'+
+   '<td class="n band r">'+num(d.od)+'</td>'+
+   '<td class="n">'+(d.avg===null?'<span class="dash">&mdash;</span>':'<span class="'+(d.avg>90?"r":d.avg>45?"w":"")+'">'+d.avg+'d</span>')+'</td>'+
+   '<td class="n sm">'+(d.max===null?'<span class="dash">&mdash;</span>':d.max+'d')+'</td>'+
+   '<td class="n w">'+num(d.nodate)+'</td></tr>'});
+ document.getElementById("dsTbl").innerHTML=h+'</tbody>';
+}
+
+/* ---------- DLG team ---------- */
+function dlgAgg(rows){
+ var P={};
+ rows.forEach(function(r){ r._pocs.forEach(function(n){
+   var d=P[n]||(P[n]={name:n,homes:[],sold:0,uns:0,closed:0,open:0,od:0,nodue:0,tats:[],ontime:0,measured:0});
+   d.homes.push(r); if(r._sold==="Sold")d.sold++; else d.uns++;
+   if(r._mbclosed)d.closed++; else d.open++;
+   if(r._od)d.od++; if(r._nodue)d.nodue++;
+   if(r._tat!==null)d.tats.push(r._tat);
+   if(r._ontime!==null){d.measured++; if(r._ontime)d.ontime++}
+ })});
+ return Object.keys(P).map(function(k){var d=P[k];
+   d.total=d.homes.length;
+   d.avg=d.tats.length?d.tats.reduce(function(a,b){return a+b},0)/d.tats.length:null;
+   d.pct=d.measured?Math.round(100*d.ontime/d.measured):null;
+   return d}).sort(function(a,b){return b.total-a.total})}
+
+function renderDlg(rows){
+ var A=dlgAgg(rows);
+ var nb=rows.filter(function(r){return !r._brief}).length;
+ var warn=nb ? '<b style="color:var(--crit)">Read the TAT columns with care:</b> '+nb+' of '+rows.length+
+   ' homes in this view have <b>no Brief Date</b>, so they cannot contribute to a turnaround figure at all. '+
+   'The number in brackets after each TAT is the sample it was actually computed from. ' : '';
+ document.getElementById("dlgNote").innerHTML= warn+
+  'Names from the <b>DLG POC - Moodboard</b> column. <b>MB closed</b> counts homes at Design Status <b>18. Final MB Closed</b> or beyond. '+
+  '<b>Past due</b> = MB due date gone by with the status still below 18. '+
+  '<b>Avg TAT</b> = mean(Final MB Closed &minus; Brief Date) where both dates exist. '+
+  '<b>On-time %</b> = share of measurable homes closed on or before the MB due date (sample size in brackets). '+
+  'A home naming two POCs counts in full for each, so the column can total above '+rows.length+'. '+
+  '<b>Click any row to see that person’s homes.</b>';
+ var h='<thead><tr><th></th><th>Member</th><th class="n band">Total homes</th><th class="n">Sold</th><th class="n">Unsold</th>'+
+  '<th class="n band">MB closed</th><th class="n">MB open</th><th class="n">Past due</th><th class="n">No due date</th>'+
+  '<th class="n band">Avg TAT</th><th class="n">On-time %</th></tr></thead><tbody>';
+ A.forEach(function(d,i){
+  h+='<tr class="clk" data-i="'+i+'" title="Show this person’s homes"><td class="sm" style="width:14px">&#9656;</td>'+
+   '<td style="font-weight:700">'+esc(d.name)+'</td>'+
+   '<td class="n band" style="font-weight:800">'+d.total+'</td><td class="n">'+num(d.sold)+'</td><td class="n">'+num(d.uns)+'</td>'+
+   '<td class="n band g">'+num(d.closed)+'</td><td class="n w">'+num(d.open)+'</td>'+
+   '<td class="n r">'+num(d.od)+'</td><td class="n dash">'+num(d.nodue)+'</td>'+
+   '<td class="n band">'+tatTxt(d.avg)+' <span class="sm">('+d.tats.length+')</span></td>'+
+   '<td class="n">'+(d.pct===null?'<span class="dash">&mdash;</span>':'<span class="'+(d.pct>=60?"g":d.pct>=30?"w":"r")+'">'+d.pct+'%</span>')+
+   ' <span class="sm">('+d.measured+')</span></td></tr>'});
+ document.getElementById("dlgTbl").innerHTML=h+'</tbody>';
+ [].forEach.call(document.querySelectorAll("#dlgTbl tr.clk"),function(tr){tr.onclick=function(){
+   openPoc(A[+tr.dataset.i].name,true)}});
+}
+
+/* ---------- homes a POC is working on ---------- */
+var RAGLBL={closed:["MB closed","g"],red:["Past due","r"],amber:["Due soon","w"],green:["On track","g"],nodue:["No due date","dash"]};
+function homeTable(homes){
+ var d=homes.slice().sort(function(a,b){
+   if(b._overdue!==a._overdue)return b._overdue-a._overdue;
+   var x=a._mbclosed?1:0, y=b._mbclosed?1:0; if(x!==y)return x-y;
+   return (a._label>b._label?1:-1)});
+ var h='<table class="mini"><thead><tr><th>Home</th><th>Property</th><th class="n">Sold</th><th class="n">Pri</th>'+
+  '<th>Design Status</th><th class="n">Days in stage</th><th class="n">Brief</th><th class="n">MB due</th><th class="n">MB closed</th>'+
+  '<th class="n">Overdue</th><th class="n">Ops</th><th class="n">Handover</th><th>Remarks</th></tr></thead><tbody>';
+ d.forEach(function(r){
+  var rl=RAGLBL[r._rag];
+  var rem=T(r.rem)+(T(r.req)?"   ||   CLIENT REQ: "+T(r.req):"");
+  h+='<tr><td style="font-weight:600">'+esc(r._label)+'</td><td>'+esc(r.prop)+'</td>'+
+   '<td class="n">'+esc(r._sold)+'</td><td class="n">'+esc(T(r.pri))+'</td>'+
+   '<td class="'+rl[1]+'" data-t="'+esc(rl[0])+'">'+esc(T(r.ds)||"—")+'</td>'+
+   '<td class="n sm">'+(r._stale===null?'<span class="dash">&mdash;</span>':'<span class="'+(r._stale>90?"r":r._stale>45?"w":"")+'">'+r._stale+'d</span>')+'</td>'+
+   '<td class="n sm">'+(r._brief?fmtd(r._brief):'<span class="dash">&mdash;</span>')+'</td>'+
+   '<td class="n sm">'+(r._due?fmtd(r._due):'<span class="dash">&mdash;</span>')+'</td>'+
+   '<td class="n sm">'+(r._closed?fmtd(r._closed):'<span class="dash">&mdash;</span>')+'</td>'+
+   '<td class="n">'+(r._overdue>0?'<span class="r">'+r._overdue+'d</span>':'<span class="dash">&mdash;</span>')+'</td>'+
+   '<td class="n sm">'+esc(T(r.ops)||"—")+'</td>'+
+   '<td class="n sm">'+(r._ho?fmtd(r._ho):'<span class="dash">&mdash;</span>')+'</td>'+
+   '<td class="sm" data-t="'+esc(rem)+'" style="max-width:230px">'+esc(rem.slice(0,58))+(rem.length>58?"…":"")+'</td></tr>'});
+ return h+'</tbody></table>';
+}
+var POCOPEN={};
+function slug(n){return n.replace(/[^A-Za-z0-9]/g,"_")}
+function renderPocHomes(rows){
+ var A=dlgAgg(rows);
+ var only=document.getElementById("fDlg").value;
+ var h='<div style="margin:-4px 0 12px"><button class="btn" id="expAll">Expand all</button> '+
+       '<button class="btn" id="colAll">Collapse all</button></div>';
+ A.forEach(function(d){
+  var id=slug(d.name);
+  var show=only?true:!!POCOPEN[d.name];
+  h+='<div class="pocblk" style="border:1px solid var(--border);border-radius:6px;margin:0 0 10px">'+
+   '<div class="clk pochd" data-n="'+esc(d.name)+'" style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--shade);border-radius:6px;flex-wrap:wrap">'+
+     '<span class="sm" id="cx_'+id+'" style="width:10px">'+(show?"&#9662;":"&#9656;")+'</span>'+
+     '<span style="font-weight:700;font-size:13.5px">'+esc(d.name)+'</span>'+
+     '<span class="sm" style="font-weight:600">'+d.total+' homes &middot; '+d.open+' moodboards still open &middot; '+
+       (d.od?'<span class="r">'+d.od+' past due</span>':'0 past due')+
+       (d.nodue?' &middot; <span class="w">'+d.nodue+' with no due date</span>':'')+'</span></div>'+
+   '<div id="pb_'+id+'" style="display:'+(show?"block":"none")+'"><div class="scroll" style="padding:4px 12px 12px">'+
+     homeTable(d.homes)+'</div></div></div>'});
+ document.getElementById("pocHomes").innerHTML=A.length?h:'<div class="sm">No homes match the current filters.</div>';
+ [].forEach.call(document.querySelectorAll("#pocHomes .pochd"),function(el){
+   el.onclick=function(){togglePoc(el.dataset.n)}});
+ var ea=document.getElementById("expAll"), ca=document.getElementById("colAll");
+ if(ea)ea.onclick=function(){A.forEach(function(d){POCOPEN[d.name]=true});renderPocHomes(rows)};
+ if(ca)ca.onclick=function(){POCOPEN={};renderPocHomes(rows)};
+ bindTips("#pocHomes [data-t]");
+}
+function togglePoc(n){
+ var id=slug(n), b=document.getElementById("pb_"+id), c=document.getElementById("cx_"+id);
+ if(!b)return; var open=b.style.display!=="none";
+ b.style.display=open?"none":"block"; c.innerHTML=open?"&#9656;":"&#9662;"; POCOPEN[n]=!open;
+ if(!open)bindTips("#pb_"+id+" [data-t]");
+}
+function openPoc(n,scroll){
+ var id=slug(n), b=document.getElementById("pb_"+id);
+ if(!b)return; if(b.style.display==="none")togglePoc(n);
+ if(scroll)b.parentNode.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+/* ---------- ID-DM ---------- */
+function renderIddm(rows){
+ document.getElementById("iddmNote").innerHTML=
+  '<b>Total homes</b> is the designer’s in-scope load. <b>Load</b> is banded on that total (High &ge;'+LOAD_BANDS.high+
+  ' &middot; Moderate '+LOAD_BANDS.moderate+'&ndash;'+(LOAD_BANDS.high-1)+' &middot; Low 1&ndash;'+(LOAD_BANDS.moderate-1)+
+  '). The stage split reads <b>Design Status</b> and sums to Total. <b>Avg TAT</b> uses only homes with both a Brief Date and a Final MB Closed date. '+
+  'Grouped by POD and ID Lead.';
+ var P={};
+ rows.forEach(function(r){
+  var n=r._iddm; if(!n)return;
+  var key=T(r.pod)+"||"+T(r.lead)+"||"+n;
+  var d=P[key]||(P[key]={pod:T(r.pod)||"(no POD)",lead:T(r.lead)||"—",name:n,total:0,sold:0,uns:0,
+    pre:0,mb:0,client:0,closed:0,style:0,done:0,od:0,tats:[]});
+  d.total++; if(r._sold==="Sold")d.sold++; else d.uns++;
+  var k=r._phase.k;
+  if(k==="await"||k==="notstart"||k==="onboard"||k==="ideation")d.pre++;
+  else if(k==="mb")d.mb++;
+  else if(k==="client")d.client++;
+  else if(k==="mbdone"||k==="gfc")d.closed++;
+  else if(k==="styling"||k==="hold")d.style++;
+  else d.done++;
+  if(r._od)d.od++;
+  if(r._tat!==null)d.tats.push(r._tat)});
+ var arr=Object.keys(P).map(function(k){var d=P[k];
+   d.avg=d.tats.length?d.tats.reduce(function(a,b){return a+b},0)/d.tats.length:null; return d});
+ var groups={};
+ arr.forEach(function(d){var g=d.pod+"||"+d.lead; (groups[g]=groups[g]||[]).push(d)});
+ var gk=Object.keys(groups).sort();
+ var h='<thead><tr><th>Designer</th><th class="n band">Total homes</th><th class="n">Sold</th><th class="n">Unsold</th>'+
+  '<th class="n band">Pre-MB</th><th class="n">MB WIP</th><th class="n">With client</th><th class="n">MB closed / GFC</th>'+
+  '<th class="n">Styling</th><th class="n">Other</th>'+
+  '<th class="n band">Past due</th><th class="n">Avg TAT</th><th class="n">Load</th></tr></thead><tbody>';
+ gk.forEach(function(g){
+  var p=g.split("||"), list=groups[g].sort(function(a,b){return b.total-a.total});
+  h+='<tr class="grp"><td colspan="13">'+esc(p[0])+' &middot; Lead: '+esc(p[1])+' &middot; '+list.length+' designer'+(list.length>1?"s":"")+'</td></tr>';
+  list.forEach(function(d){
+   var band=d.total>=LOAD_BANDS.high?["HIGH","var(--crit)"]:d.total>=LOAD_BANDS.moderate?["MODERATE","var(--warn)"]:["LOW","var(--muted)"];
+   h+='<tr><td style="font-weight:600">'+esc(d.name)+'</td>'+
+    '<td class="n band" style="font-weight:800">'+d.total+'</td><td class="n">'+num(d.sold)+'</td><td class="n">'+num(d.uns)+'</td>'+
+    '<td class="n band dash">'+num(d.pre)+'</td><td class="n w">'+num(d.mb)+'</td><td class="n w">'+num(d.client)+'</td>'+
+    '<td class="n g">'+num(d.closed)+'</td><td class="n">'+num(d.style)+'</td><td class="n dash">'+num(d.done)+'</td>'+
+    '<td class="n band r">'+num(d.od)+'</td>'+
+    '<td class="n">'+tatTxt(d.avg)+'</td>'+
+    '<td class="n"><span class="pill" style="color:'+band[1]+'">'+band[0]+'</span></td></tr>'})});
+ document.getElementById("iddm").innerHTML=h+'</tbody>';
+}
+
+/* ================================================================
+   LEADERSHIP SUPPORT
+   Themes are matched against Remarks + Client Requirements.
+   Add / edit / reorder freely - each needs t (title), re (pattern), why (the ask).
+   ================================================================ */
+var THEMES=[
+ {t:"Repeated moodboard revisions",
+  re:/\b(\d+\s*revisions?|revision|rework|re-?work|r[01]\s*(version|mb)?\b|overhaul|redo|new mb|revised mb)\b/i,
+  why:"this home has been round the moodboard loop more than once. One consolidated sitting with the client to settle it would stop another cycle."},
+
+ {t:"External design partner is behind",
+  re:/(ext\.? ?id|external|consultant|not delivering|didn.?t deliver|did not deliver|awaited from|msa|studio|unbox|nishita|laila|kirti|quasco|farheen|fnd\b|minni|ava\b)/i,
+  why:"the external partner’s delivery is the thing holding this up. A short call on the committed date, or a decision to bring it in-house, would recover the timeline."},
+
+ {t:"Waiting on the client to come back",
+  re:/(await.{0,25}(cx|client|response|feedback|revert|approval)|(cx|client).{0,25}await|response awaited|feedback awaited|cx\.? call|client meeting|call with|yet to revert|no revert|cx\.? was travel|client.{0,15}travel)/i,
+  why:"this one is parked on the client side. A nudge from sales to secure the slot or the response would move it faster than anything design can do."},
+
+ {t:"Client has changed the brief or the direction",
+  re:/(brief chang|changed brief|new (look|style|direction)|completely different|portuguese|traditional|direction|look and feel|not happy with the design|owner (got )?chang|cx chang|new owner)/i,
+  why:"the client has moved the goalposts on style. An early alignment on the revised direction - before the team rebuilds - would avoid a second round of rework."},
+
+ {t:"Commercial or cost decision needed",
+  re:/(additional cost|cost impact|@ ?additional|budget|commercial|finance|payment|quote|pricing|costing)/i,
+  why:"there is a cost conversation sitting inside this home. A quick confirmation of the client’s position would let the team plan the next step with confidence."},
+
+ {t:"Client has backed out, swapped or resold",
+  re:/(backed out|back out|swap|resale|re-?sale|cancel|not go ahead|does not (want|like the arch)|medical emergency)/i,
+  why:"the commercial status of this home looks unsettled. A confirmation of where it stands would stop design effort going into something that may not proceed."},
+
+ {t:"Site or layout readiness is blocking design",
+  re:/(plinth|walling|rcp|electrical layout|layout|site (round|readiness|issue)|construction|hvac|projected pc|pc \d|carpentry|snag)/i,
+  why:"design is waiting on site or layout information rather than on a designer. An ops-side date would let the team schedule the work properly."},
+
+ {t:"Awaiting NDS sign-off",
+  re:/(nds|masterplot|master plot)/i,
+  why:"this is sitting with NDS for a call. A short slot on his calendar would release it."},
+
+ {t:"On hold - a decision would unblock it",
+  re:/(on hold|hold\b|paused|stopped|deferred|rera awaited|under discussion|discusion)/i,
+  why:"this home is parked pending a decision that is not a design decision. A short call to confirm the way forward would release it."},
+
+ {t:"Internal sign-off pending",
+  re:/(sign ?off|signed off|to (be )?present|to speak|to close (selections|on)|approval pending|pending with|final sign|to be discussed|to be reviewed|form filled|response awaited)/i,
+  why:"the work is done but is waiting on someone internally to close it out. A named owner and a date would finish it."},
+
+ {t:"Selections still open (soft furnishings, art, accessories)",
+  re:/(soft furnish|accessor|art ?frame|artwork|art and artefact|indent|catalogue|selection)/i,
+  why:"the moodboard is settled but the selections behind it are not. Confirming who signs these off would let the indent close."}
+];
+function renderLeadership(rows){
+ var byRh={};
+ rows.forEach(function(r){
+  var rh=T(r.rh); if(!rh||RH_HIDE.indexOf(rh)>=0)return;
+  var rem=T(r.rem), req=T(r.req); if(!rem&&!req)return;
+  var txt=rem+" || "+req;
+  THEMES.forEach(function(th,i){ if(th.re.test(txt)){
+    var b=byRh[rh]||(byRh[rh]={}); (b[i]=b[i]||[]).push(r) }});
+ });
+ var ks=Object.keys(byRh).sort();
+ if(!ks.length){document.getElementById("leadership").innerHTML='<div class="sm">Nothing in the remarks needs an RH nudge in the current filter.</div>';return}
+ document.getElementById("leadership").innerHTML=ks.map(function(rh){
+  var b=byRh[rh];
+  var idx=Object.keys(b).map(Number).sort(function(x,y){return b[y].length-b[x].length});
+  var tot=idx.reduce(function(a,i){return a+b[i].length},0);
+  return '<div class="card"><h4>'+esc(rh)+' <span class="sm">&middot; '+tot+' flag'+(tot===1?"":"s")+
+   ' across '+idx.length+' theme'+(idx.length===1?"":"s")+'</span></h4>'+
+   idx.map(function(i){
+    var list=b[i];
+    return '<div class="theme"><div class="t">'+esc(THEMES[i].t)+' <span class="sm">('+list.length+')</span></div>'+
+     '<div class="homes">'+list.slice(0,6).map(function(r){
+       return '<span data-t="'+esc((T(r.rem)+" "+T(r.req)).slice(0,300))+'">'+esc(r._label)+(T(r.prop)?" ("+esc(r.prop)+")":"")+'</span>'}).join(", ")+
+     (list.length>6?" +"+(list.length-6)+" more":"")+'</div>'+
+     '<div class="why">'+THEMES[i].why+'</div></div>'}).join("")+'</div>'}).join("");
+ bindTips("#leadership [data-t]");
+}
+
+/* ---------- data gaps ---------- */
+function renderGaps(rows){
+ var by={};
+ rows.forEach(function(r){var l=T(r.lead)||"(no ID lead)";
+  var d=by[l]||(by[l]={ds:0,brief:0,due:0,poc:0,chg:0,iddm:0});
+  if(!T(r.ds))d.ds++;
+  if(!r._brief)d.brief++;
+  if(r._nodue)d.due++;
+  if(!r._pocs.length && !r._mbclosed)d.poc++;
+  if(!r._chg)d.chg++;
+  if(!r._iddm)d.iddm++});
+ var tot=function(d){return d.ds+d.brief+d.due+d.poc+d.chg+d.iddm};
+ var ks=Object.keys(by).filter(function(k){return tot(by[k])>0}).sort(function(a,b){return tot(by[b])-tot(by[a])});
+ document.getElementById("gaps").innerHTML=ks.length?ks.map(function(k){
+  var d=by[k],p=[];
+  if(d.ds)p.push(d.ds+" with no Design Status");
+  if(d.chg)p.push(d.chg+" with no Status Changed On");
+  if(d.brief)p.push(d.brief+" with no Brief Date");
+  if(d.due)p.push(d.due+" with no MB due date at all");
+  if(d.poc)p.push(d.poc+" open MBs with no DLG POC");
+  if(d.iddm)p.push(d.iddm+" with no ID-DM");
+  return '<div class="gap"><div class="nm">'+esc(k)+'</div><div class="d">'+p.join(" &middot; ")+'</div></div>'}).join("")
+  :'<div class="sm">No gaps in the current filter.</div>';
+}
+
+/* ================================================================
+   FILTERS + LIVE LOAD
+   ================================================================ */
+function opts(id,vals,label){var e=document.getElementById(id);
+ var cur=e.value;
+ e.innerHTML='<option value="">'+label+'</option>'+vals.filter(Boolean).sort().map(function(v){return '<option>'+esc(v)+'</option>'}).join("");
+ if(cur)e.value=cur}
+function uniq(a){var s={};a.forEach(function(x){if(x)s[x]=1});return Object.keys(s)}
+function apply(){
+ var pod=fPod.value,rh=fRh.value,lead=fLead.value,dlg=fDlg.value,sold=fSold.value,ph=fPhase.value,
+     q=fQ.value.toLowerCase().trim();
+ var f=function(r){
+  if(pod&&T(r.pod)!==pod)return false;
+  if(rh&&T(r.rh)!==rh)return false;
+  if(lead&&T(r.lead)!==lead)return false;
+  if(sold&&r._sold!==sold)return false;
+  if(ph&&r._phase.t!==ph)return false;
+  if(dlg&&r._pocs.indexOf(dlg)<0)return false;
+  if(q){var hay=(r._label+" "+r.prop+" "+r.proj+" "+r.dlg+" "+r.iddm+" "+r.ds+" "+r.rem+" "+r.req).toLowerCase();
+   if(hay.indexOf(q)<0)return false}
+  return true};
+ VIEW=Q.filter(f);
+ document.getElementById("count").textContent=VIEW.length+" of "+Q.length+" live homes";
+ renderKpis(VIEW); renderRisk(VIEW); renderPhase(VIEW); renderPodLoad(VIEW); renderHo(VIEW);
+ renderDs(VIEW); renderDlg(VIEW); renderPocHomes(VIEW); renderIddm(VIEW);
+ renderLeadership(VIEW); renderGaps(VIEW);
+}
+function boot(rows){
+ RAW=rows.map(enrich);
+ var base=RAW.filter(baseScope);
+ HANDED=base.filter(isHandedOver);
+ Q = EXCLUDE_HANDED_OVER ? base.filter(function(r){return !isHandedOver(r)}) : base;
+ opts("fPod",uniq(Q.map(function(r){return T(r.pod)})),"All PODs");
+ opts("fRh",uniq(Q.map(function(r){return T(r.rh)})),"All RHs");
+ opts("fLead",uniq(Q.map(function(r){return T(r.lead)})),"All leads");
+ opts("fDlg",uniq([].concat.apply([],Q.map(function(r){return r._pocs}))),"All DLG POCs");
+ opts("fSold",uniq(Q.map(function(r){return r._sold})),"All");
+ opts("fPhase",uniq(Q.map(function(r){return r._phase.t})),"All stages");
+ apply();
+ var when=FETCHED?FETCHED.toLocaleString():"";
+ document.getElementById("subline").textContent=
+  Q.length+" live homes"+(EXCLUDE_HANDED_OVER&&HANDED.length?" ("+HANDED.length+" handed over, excluded)":"")+
+  " out of "+RAW.length+" rows on the sheet · read live at "+when;
+ document.getElementById("stamp").textContent=when;
+ document.getElementById("foot").innerHTML=
+  "Source: <b>"+esc(TAB_NAME)+"</b> in the MASTER TRACKER workbook, read straight from Google Sheets in your browser each time this page loads"+
+  (AUTO_REFRESH_MIN?" and again every "+AUTO_REFRESH_MIN+" minutes":"")+". "+
+  "Every number on this page is computed here from the sheet’s own columns — nothing is stored, cached or model-generated. "+
+  "MB Due Date = MIN(Brief Date + "+SLA_DAYS+"d, PC Date). TAT = Final MB Closed − Brief Date, using only rows where both dates exist. "+
+  "Definitions and thresholds live in the CONFIG block at the top of index.html.";
+}
+function setLive(state,txt){
+ var el=document.getElementById("live");
+ el.className="live"+(state?" "+state:"");
+ document.getElementById("livetxt").textContent=txt;
+}
+function csvUrl(){
+ return "https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:csv&headers=0&gid="+TAB_GID+"&cb="+Date.now();
+}
+function load(){
+ setLive("","READING SHEET");
+ document.getElementById("msg").innerHTML="";
+ fetch(csvUrl(),{cache:"no-store"})
+  .then(function(res){ if(!res.ok)throw new Error("HTTP "+res.status); return res.text() })
+  .then(function(text){
+    if(/^\s*</.test(text))throw new Error("Google returned a sign-in page instead of data - the sheet is not shared as 'Anyone with the link can view'.");
+    var grid=parseCSV(text);
+    var rows=rowsToObjects(grid);
+    if(!rows.length)throw new Error("The tab was read but contained no data rows.");
+    FETCHED=new Date();
+    boot(rows);
+    setLive("","LIVE");
+  })
+  .catch(function(e){
+    setLive("err","OFFLINE");
+    document.getElementById("msg").innerHTML='<div class="err"><b>Could not read the sheet.</b> '+esc(e.message||e)+
+     '<br><span style="font-size:11.5px">Check that the sheet is shared as <b>Anyone with the link &rarr; Viewer</b>, and that the tab GID in the CONFIG block still matches.</span></div>';
+    document.getElementById("subline").textContent="Failed to load.";
+  });
+}
+document.getElementById("theme").onclick=function(){var r=document.documentElement;
+ r.dataset.theme=r.dataset.theme==="dark"?"light":"dark"};
+document.getElementById("refresh").onclick=function(){load()};
+["fPod","fRh","fLead","fDlg","fSold","fPhase"].forEach(function(id){document.getElementById(id).onchange=apply});
+document.getElementById("fQ").oninput=apply;
+document.getElementById("clear").onclick=function(){
+ ["fPod","fRh","fLead","fDlg","fSold","fPhase"].forEach(function(id){document.getElementById(id).value=""});
+ document.getElementById("fQ").value="";apply()};
+
+function start(){
+ load();
+ if(AUTO_REFRESH_MIN>0){ if(TIMER)clearInterval(TIMER);
+  TIMER=setInterval(load,AUTO_REFRESH_MIN*60000) }
+}
+/* optional passcode gate */
+(function(){
+ var g=document.getElementById("gate");
+ if(!PASSCODE){ start(); return }
+ if(sessionStorage.getItem("idg")==="1"){ start(); return }
+ g.style.display="flex";
+ var go=function(){
+  if(document.getElementById("gpass").value===PASSCODE){
+   sessionStorage.setItem("idg","1"); g.style.display="none"; start();
+  } else { document.getElementById("gmsg").textContent="Not that one." }};
+ document.getElementById("gbtn").onclick=go;
+ document.getElementById("gpass").onkeydown=function(e){if(e.key==="Enter")go()};
+})();
+</script></body></html>
