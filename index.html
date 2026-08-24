@@ -373,10 +373,12 @@ function enrich(r){
  var a=r._brief?addDays(r._brief,SLA_DAYS):null, b=r._pc;
  r._due = r._pmb || ((a&&b) ? (a<b?a:b) : (a||b||null));
  r._phase=phaseOf(r.ds); r._ord=dsOrder(r.ds);
- /* PROGRESS is now the authority on whether the moodboard is done. */
+ /* Closed if PROGRESS says so, OR if NDS has signed off (column X). */
  r._prog=T(r.prog);
- r._mbclosed = PROG_CLOSED.indexOf(r._prog)>=0;
- r._mbopen   = PROG_OPEN.indexOf(r._prog)>=0;
+ r._closedByProg = PROG_CLOSED.indexOf(r._prog)>=0;
+ r._closedByNds  = MB_CLOSED_ALSO_NDS && !!r._nds && !r._closedByProg;
+ r._mbclosed = r._closedByProg || r._closedByNds;
+ r._mbopen   = !r._mbclosed && PROG_OPEN.indexOf(r._prog)>=0;
  r._inFY = inFY(r._pmb);
  r._tat=(r._brief&&r._closed)?dd(r._closed,r._brief):null;
  r._ontime=(r._delay!==null)?(r._delay<=0):null;
@@ -407,11 +409,11 @@ function renderKpis(rows){
  var od=rows.filter(function(r){return r._od}).length;
  /* KPI 2 - moodboard done, per the PROGRESS column */
  var done=rows.filter(function(r){return r._mbclosed});
- var doneA=rows.filter(function(r){return r._prog==="Completed"}).length;
- var doneB=rows.filter(function(r){return r._prog==="Post MB Closure"}).length;
+ var doneP=rows.filter(function(r){return r._closedByProg}).length;
+ var doneN=rows.filter(function(r){return r._closedByNds}).length;
  /* KPI 3 - moodboard open */
  var open=rows.filter(function(r){return r._mbopen});
- var withSales=rows.filter(function(r){return /^in progress\b/i.test(r._prog) && PROG_OPEN.indexOf(r._prog)<0}).length;
+ var withSales=rows.filter(function(r){return !r._mbclosed && /^in progress\b/i.test(r._prog) && PROG_OPEN.indexOf(r._prog)<0}).length;
  /* Open moodboards already past their projected TAT, per the sheet's Delay Days */
  var overNow=rows.filter(function(r){return !r._mbclosed && r._delay!==null && r._delay>0});
  var overAvg=overNow.length?overNow.reduce(function(a,r){return a+r._delay},0)/overNow.length:0;
@@ -427,7 +429,7 @@ function renderKpis(rows){
  var pct=compM.length?Math.round(100*compM.filter(function(r){return r._ontime}).length/compM.length):null;
  var cards=[
   ["Live homes",tot,"<b>"+sold+"</b> sold<br><b>"+(tot-sold)+"</b> unsold past PC","var(--ink)"],
-  ["MB closed (Ops)",done.length,"<b>"+doneA+"</b> completed<br><b>"+doneB+"</b> post MB closure","var(--good)"],
+  ["MB closed (Ops)",done.length,"<b>"+doneP+"</b> by PROGRESS<br><b>"+doneN+"</b> more by NDS sign-off","var(--good)"],
   ["MB open",open.length,"PROGRESS = In Progress<br><b>"+withSales+"</b> more are with sales","var(--warn)"],
   ["Open &amp; already over",overNow.length,
     (overNow.length?"<b>+"+Math.round(overAvg)+"d</b> average, worst +"+overMax+"d":"none past their TAT")+
@@ -446,7 +448,9 @@ function renderKpis(rows){
   '(Ops = '+OPS_PAST_PC.join(" / ")+') ('+(tot-sold)+'), giving <b>'+tot+' live homes</b>. '+
   'CC sits before PC on the ops ladder, so Unsold homes at CC or Construction Not Started are out. '+
   'Homes with a blank or NA Sold/Unsold status are out. '+
-  '<b>MB closed / open</b> read the <b>PROGRESS</b> column ('+PROG_CLOSED.join(" + ")+' = closed; '+PROG_OPEN.join(" + ")+' = open). '+
+  '<b>MB closed</b> = PROGRESS is '+PROG_CLOSED.join(" or ")+
+  (MB_CLOSED_ALSO_NDS?', <b>or</b> the home has a date in <b>NDS Approved / R0</b> (column X) &mdash; that is the column your own TAT and Delay Days formulas close against, so a home NDS has signed off counts as closed even where PROGRESS has not caught up':'')+
+  '. <b>MB open</b> = PROGRESS is '+PROG_OPEN.join(" or ")+' and not closed by the above. '+
   '<b>Due date</b> = <b>MB Closure PROJECTED</b>, falling back to MIN(Brief + '+SLA_DAYS+'d, PC Date) where that is blank. '+
   '<b>Delay</b> comes from the sheet’s own <b>Delay Days</b> column (ACTUAL MB Closure TAT &minus; Projected MB Closure TAT), '+
   'which keeps running on open moodboards &mdash; a negative value means days of runway still left, positive means already over. '+
@@ -628,7 +632,7 @@ function homeTable(homes){
    var x=a._mbclosed?1:0, y=b._mbclosed?1:0; if(x!==y)return x-y;
    return (a._label>b._label?1:-1)});
  var h='<table class="mini"><thead><tr><th>Home</th><th>Property</th><th class="n">Sold</th><th class="n">Pri</th>'+
-  '<th>PROGRESS</th><th>Design Status</th><th class="n">Days in stage</th><th class="n">MB due</th>'+
+  '<th>PROGRESS</th><th class="n">NDS ok</th><th class="n">Days in stage</th><th class="n">MB due</th>'+
   '<th class="n">Delay Days</th><th class="n">Runway</th>'+
   '<th class="n">Ops</th><th class="n">Handover</th><th>Remarks</th></tr></thead><tbody>';
  d.forEach(function(r){
@@ -637,7 +641,7 @@ function homeTable(homes){
   h+='<tr><td style="font-weight:600">'+esc(r._label)+'</td><td>'+esc(r.prop)+'</td>'+
    '<td class="n">'+esc(r._sold)+'</td><td class="n">'+esc(T(r.pri))+'</td>'+
    '<td class="'+rl[1]+'" data-t="'+esc(rl[0])+'">'+esc(r._prog||"—")+'</td>'+
-   '<td class="sm">'+esc(T(r.ds)||"—")+'</td>'+
+   '<td class="n sm">'+(r._nds?'<span class="g">'+fmtd(r._nds)+'</span>':'<span class="dash">&mdash;</span>')+'</td>'+
    '<td class="n sm">'+(r._stale===null?'<span class="dash">&mdash;</span>':'<span class="'+(r._stale>90?"r":r._stale>45?"w":"")+'">'+r._stale+'d</span>')+'</td>'+
    '<td class="n sm">'+(r._due?fmtd(r._due):'<span class="dash">&mdash;</span>')+'</td>'+
    '<td class="n">'+(r._delay===null?'<span class="dash">&mdash;</span>'
