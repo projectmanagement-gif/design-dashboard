@@ -37,6 +37,9 @@ h3{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--gol
 .kpi .v{font-family:Georgia,"Times New Roman",serif;font-size:33px;font-weight:700;margin:5px 0 4px;letter-spacing:-.02em}
 .kpi .sp{border-top:1px dashed var(--base);padding-top:5px;font-size:10.5px;color:var(--ink2);line-height:1.5}
 .kpi .sp b{color:var(--ink);font-weight:700}
+.subk{cursor:pointer;border-bottom:1px dotted var(--base)}
+.subk:hover{color:var(--gold);border-bottom-color:var(--gold)}
+.subk.onsub{color:var(--gold);font-weight:700;border-bottom-color:var(--gold)}
 .kpi.clickable{cursor:pointer;position:relative;transition:border-color .12s,transform .08s}
 .kpi.clickable:hover{border-color:var(--gold);transform:translateY(-1px)}
 .kpi.clickable::after{content:"\25B8";position:absolute;right:7px;top:5px;font-size:9px;color:var(--muted)}
@@ -188,10 +191,23 @@ var FOCUS_MIN_GAP_SEC = 10;   // ...unless we already read within this many seco
 var OPS_EXCLUDE_ALWAYS = ["HO","-"];
 var OPS_PAST_PC        = ["PC","GF","FF","SS","CINT","INT"];
 
-/* PROGRESS column buckets. */
-var PROG_CLOSED = ["Completed","Post MB Closure"];  // moodboard done
-var PROG_OPEN   = ["In Progress"];                  // moodboard open
-var PROG_ONTIME = ["Completed"];                    // on-time is judged on these
+/* PROGRESS column buckets.
+   KPI 2 "NDS Approved"  = NDS has signed off; splits into the three below.
+   KPI 3 "Open MB"       = not yet with NDS. */
+var PROG_NDS_SALES  = ["Approved By NDS","In Progress - with Sales"]; // 2a Pending with Sales
+var PROG_NDS_REWORK = ["Rework In Progress"];                         // 2b Rework WIP (Client)
+var PROG_NDS_CXOK   = ["Completed","Post MB Closure"];                // 2c Client Approved
+var PROG_NDS_ALL    = PROG_NDS_SALES.concat(PROG_NDS_REWORK, PROG_NDS_CXOK);
+var PROG_OPEN_ALL   = ["Not Started","In Progress"];                  // KPI 3 total
+var PROG_NOTSTART   = ["Not Started"];                                // 3a
+
+/* 3b "Fresh MB" and 3c "Rework WIP (NDS)" read the Design Status number. */
+var DS_FRESH_MB   = [1,2,3,4,5,6,7,8,9,10];   // 01..10 onboarding -> MB approved internally
+var DS_REWORK_NDS = [11];                     // 11. MB Rework (NDS)
+
+/* Closed / open for the team tables further down the page. */
+var PROG_CLOSED = PROG_NDS_CXOK;   // client-approved counts as done workload
+var PROG_OPEN   = ["In Progress"];
 
 /* Column X, "NDS Approved / R0", is what the sheet's own TAT and Delay Days
    formulas close against, so it is used as the moodboard-closure DATE throughout.
@@ -229,7 +245,7 @@ var ALIAS = {
 
 /* ================================================================ */
 var RAW=[], Q=[], VIEW=[], HANDED=[], FETCHED=null, TIMER=null;
-var KPIOPEN=null, KPISETS=[];   // which KPI card is expanded, and what sits behind each
+var KPIOPEN=null, KPISETS={};   // which KPI card is expanded, and what sits behind each
 var tip=document.getElementById("tip");
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function T(v){return String(v==null?"":v).trim()}
@@ -265,15 +281,17 @@ var FIELDS=[
  ["ds","design status",17],["dschanged","status changed on",18],
  ["brief","brief date",19],["extidact","ext. id / wo released",20],["ideation","ideation closed",21],
  ["mbfirst","mb first cut",22],["nds","nds approved",23],["mbsales","mb shared with sales",24],
- ["cxappr","client approved",25],["mbver","mb versions",26],["mbclosed","final mb closed",27],
- ["pcbud","pc budgeted date",28],["pcact","pc actual date",29],
- ["pextid","ext. id onboarding trigger",30],["pideation","ideation closure",31],["pmb","mb closure",32],
- ["daysupd","days since last update",33],["ptat","projected mb closure tat",34],["atat","actual mb closure tat",35],
- ["delaydays","delay days",36],
- ["delayp","delay (basis projected)",37],["delaya","delay (basis actual)",38],["prog","progress",39],
- ["ops","project stage ops",40],["pri","project priority",41],
- ["hobud","handover date budgeted",42],["hoact","handover date actual",43],
- ["hopoc","dlg poc - handover",44],["rem","remarks",45],["req","client requirements",46]];
+ ["cxmeet","client / feedback meeting",25],
+ ["cxappr","client approved",26],["mbver","mb versions",27],["mbclosed","final mb closed",28],
+ ["pcbud","pc budgeted date",29],["pcact","pc actual date",30],
+ ["pextid","ext. id onboarding trigger",31],["pideation","ideation closure",32],
+ ["mbbud","mb closure budgeted",33],["pmb","mb / mb rework closure",34],
+ ["daysupd","days since last update",35],["ptat","projected mb closure tat",36],["atat","actual mb closure tat",37],
+ ["delaydays","delay days",38],
+ ["delayp","delay (basis projected)",39],["delaya","delay (basis actual)",40],["prog","progress",41],
+ ["ops","project stage ops",42],["pri","project priority",43],
+ ["hobud","handover date budgeted",44],["hoact","handover date actual",45],
+ ["hopoc","dlg poc - handover",46],["rem","remarks",47],["req","client requirements",48]];
 
 function buildMap(hdr){
  var norm=hdr.map(function(h){return T(h).replace(/\s+/g," ").toLowerCase()});
@@ -428,11 +446,6 @@ function renderKpis(rows){
  var od=rows.filter(function(r){return r._od}).length;
  /* KPI 2 - moodboard done, per the PROGRESS column */
  var done=rows.filter(function(r){return r._mbclosed});
- var doneA=rows.filter(function(r){return r._prog==="Completed"}).length;
- var doneB=rows.filter(function(r){return r._prog==="Post MB Closure"}).length;
- /* KPI 3 - moodboard open */
- var open=rows.filter(function(r){return r._mbopen});
- var withSales=rows.filter(function(r){return !r._mbclosed && /^in progress\b/i.test(r._prog) && PROG_OPEN.indexOf(r._prog)<0}).length;
  /* KPI 4 - projected MB closure inside the FY window, delay from Delay Days */
  var fy=rows.filter(function(r){return r._inFY});
  var fyDelays=fy.filter(function(r){return r._delay!==null});
@@ -443,30 +456,62 @@ function renderKpis(rows){
  var onT=compM.filter(function(r){return r._delay<=0}).length;
  var pct=compM.length?Math.round(100*onT/compM.length):null;
  var noDD=done.length-compM.length;
- /* Each card carries the exact set of homes behind its number, so clicking it
-    opens that list and the two can never disagree. */
+ /* KPI 2 - NDS has approved, split three ways */
+ var inP=function(r,list){return list.indexOf(r._prog)>=0};
+ var ndsAll   = rows.filter(function(r){return inP(r,PROG_NDS_ALL)});
+ var ndsSales = rows.filter(function(r){return inP(r,PROG_NDS_SALES)});
+ var ndsRew   = rows.filter(function(r){return inP(r,PROG_NDS_REWORK)});
+ var ndsCx    = rows.filter(function(r){return inP(r,PROG_NDS_CXOK)});
+ /* KPI 3 - moodboard not yet with NDS, split three ways */
+ var openAll  = rows.filter(function(r){return inP(r,PROG_OPEN_ALL)});
+ var opNot    = openAll.filter(function(r){return inP(r,PROG_NOTSTART)});
+ var opFresh  = openAll.filter(function(r){return DS_FRESH_MB.indexOf(r._ord)>=0});
+ var opRew    = openAll.filter(function(r){return DS_REWORK_NDS.indexOf(r._ord)>=0});
+ var opOther  = openAll.filter(function(r){return !inP(r,PROG_NOTSTART) &&
+                  DS_FRESH_MB.indexOf(r._ord)<0 && DS_REWORK_NDS.indexOf(r._ord)<0});
+ /* Each card and each sub-line carries the exact set behind its number, so the
+    figure and the list it opens can never disagree. */
  var cards=[
-  ["Live homes",tot,"<b>"+sold+"</b> sold<br><b>"+(tot-sold)+"</b> unsold past PC","var(--ink)",
-    rows,"every home in scope"],
-  ["MB closed (Ops)",done.length,"<b>"+doneA+"</b> completed<br><b>"+doneB+"</b> post MB closure","var(--good)",
-    done,"PROGRESS is Completed or Post MB Closure"],
-  ["MB open",open.length,"PROGRESS = In Progress<br><b>"+withSales+"</b> more are with sales","var(--warn)",
-    open,"PROGRESS is In Progress"],
-  ["MB crossed due date "+FY_LABEL,fy.length,
-    (fyAvg===null?"no Delay Days data":"<b>"+(fyAvg>0?"+":"")+Math.round(fyAvg*10)/10+"d</b> avg Delay Days")+
-    "<br><b>"+fyLate+"</b> ran late","var(--crit)",
-    fy,"MB Closure PROJECTED falls inside "+FY_LABEL+" (1 Apr 2026 – 31 Mar 2027)"],
-  ["Closed on time",pct===null?"&mdash;":pct+"%",
-    "<b>"+onT+"</b> of "+compM.length+" closed had<br>Delay Days &le; 0"+
-    (noDD?" · "+noDD+" unmeasurable":""),"var(--blue)",
-    compM.filter(function(r){return r._delay<=0}),"MB closed and Delay Days is 0 or negative"]];
- KPISETS=cards.map(function(c){return {title:c[0],set:c[4],why:c[5],col:c[3]}});
+  {t:"Live homes",v:tot,col:"var(--ink)",set:rows,why:"every home in scope",
+   subs:[{t:"sold",n:sold,set:rows.filter(function(r){return r._sold==="Sold"}),why:"Sold/Unsold Status = Sold"},
+         {t:"unsold past PC",n:tot-sold,set:rows.filter(function(r){return r._sold!=="Sold"}),why:"Unsold at "+OPS_PAST_PC.join("/")}]},
+  {t:"NDS Approved",v:ndsAll.length,col:"var(--good)",set:ndsAll,
+   why:"PROGRESS is "+PROG_NDS_ALL.join(" / "),
+   subs:[{t:"Pending with Sales",n:ndsSales.length,set:ndsSales,why:"PROGRESS is "+PROG_NDS_SALES.join(" / ")},
+         {t:"Rework WIP (Client)",n:ndsRew.length,set:ndsRew,why:"PROGRESS is "+PROG_NDS_REWORK.join(" / ")},
+         {t:"Client Approved",n:ndsCx.length,set:ndsCx,why:"PROGRESS is "+PROG_NDS_CXOK.join(" / ")}]},
+  {t:"Open MB",v:openAll.length,col:"var(--warn)",set:openAll,
+   why:"PROGRESS is "+PROG_OPEN_ALL.join(" / "),
+   subs:[{t:"Not Started",n:opNot.length,set:opNot,why:"PROGRESS is Not Started"},
+         {t:"Fresh MB",n:opFresh.length,set:opFresh,why:"Design Status 01–10"},
+         {t:"Rework WIP (NDS)",n:opRew.length,set:opRew,why:"Design Status 11. MB Rework (NDS)"}].concat(
+         opOther.length?[{t:"unclassified",n:opOther.length,set:opOther,why:"open, but Design Status is outside 01–11"}]:[])},
+  {t:"MB crossed due date "+FY_LABEL,v:fy.length,col:"var(--crit)",set:fy,
+   why:"MB / MB Rework Closure PROJECTED falls inside "+FY_LABEL+" (1 Apr 2026 – 31 Mar 2027)",
+   subs:[{t:(fyAvg===null?"no Delay Days data":"avg Delay Days "+(fyAvg>0?"+":"")+(Math.round(fyAvg*10)/10)+"d"),
+          n:null,set:null},
+         {t:"ran late",n:fyLate,set:fy.filter(function(r){return r._delay!==null&&r._delay>0}),why:"Delay Days above 0"}]},
+  {t:"Closed on time",v:(pct===null?"&mdash;":pct+"%"),col:"var(--blue)",
+   set:compM.filter(function(r){return r._delay<=0}),why:"Client Approved and Delay Days is 0 or negative",
+   subs:[{t:"of "+compM.length+" client-approved",n:onT,set:compM.filter(function(r){return r._delay<=0}),why:"Delay Days 0 or negative"}].concat(
+         noDD?[{t:"unmeasurable",n:noDD,set:done.filter(function(r){return r._delay===null}),why:"no Delay Days value"}]:[])}
+ ];
+ KPISETS={};
+ cards.forEach(function(c,i){
+  KPISETS[""+i]={title:c.t,set:c.set,why:c.why,col:c.col};
+  c.subs.forEach(function(s,j){ if(s.set) KPISETS[i+"."+j]={title:c.t+" · "+s.t,set:s.set,why:s.why,col:c.col} })});
  document.getElementById("kpis").innerHTML=cards.map(function(c,i){
-  return '<div class="kpi clickable'+(KPIOPEN===i?" on":"")+'" data-i="'+i+'" style="border-top-color:'+c[3]+'">'+
-   '<div class="l">'+c[0]+'</div>'+
-   '<div class="v" style="color:'+c[3]+'">'+c[1]+'</div><div class="sp">'+c[2]+'</div></div>'}).join("");
+  var sp=c.subs.map(function(s,j){
+   var lbl=(s.n===null?"":"<b>"+s.n+"</b> ")+esc(s.t);
+   return s.set ? '<span class="subk'+(KPIOPEN===i+"."+j?" onsub":"")+'" data-k="'+i+"."+j+'">'+lbl+'</span>' : '<span>'+lbl+'</span>'
+  }).join("<br>");
+  return '<div class="kpi clickable'+(KPIOPEN===""+i?" on":"")+'" data-k="'+i+'" style="border-top-color:'+c.col+'">'+
+   '<div class="l">'+esc(c.t)+'</div>'+
+   '<div class="v" style="color:'+c.col+'">'+c.v+'</div><div class="sp">'+sp+'</div></div>'}).join("");
  [].forEach.call(document.querySelectorAll("#kpis .kpi.clickable"),function(el){
-  el.onclick=function(){var i=+el.dataset.i; KPIOPEN=(KPIOPEN===i)?null:i; renderKpis(rows); renderKpiDrill()}});
+  el.onclick=function(){var k=el.dataset.k; KPIOPEN=(KPIOPEN===k)?null:k; renderKpis(rows); renderKpiDrill()}});
+ [].forEach.call(document.querySelectorAll("#kpis .subk"),function(el){
+  el.onclick=function(e){e.stopPropagation(); var k=el.dataset.k; KPIOPEN=(KPIOPEN===k)?null:k; renderKpis(rows); renderKpiDrill()}});
  renderKpiDrill();
  document.getElementById("scope").innerHTML=
   '<b>Scope:</b> homes at <b>Project Stage Ops = HO or "-" are excluded from everything on this page</b> &mdash; that is a hard rule. '+
@@ -525,7 +570,7 @@ function kpiTable(rows){
 
 function renderKpiDrill(){
  var el=document.getElementById("kpiDrill");
- if(KPIOPEN===null||!KPISETS[KPIOPEN]){el.innerHTML="";return}
+ if(KPIOPEN===null||!KPISETS||!KPISETS[KPIOPEN]){el.innerHTML="";return}
  var k=KPISETS[KPIOPEN];
  el.innerHTML='<div class="drill"><div class="drillhd">'+
    '<span class="t" style="color:'+k.col+'">'+esc(k.title)+'</span>'+
@@ -673,14 +718,15 @@ function renderDs(rows){
 function dlgAgg(rows){
  var P={};
  rows.forEach(function(r){ r._pocs.forEach(function(n){
-   var d=P[n]||(P[n]={name:n,all:[],homes:[],sold:0,uns:0,open:0,sales:0,notstart:0,
+   var d=P[n]||(P[n]={name:n,all:[],homes:[],sold:0,uns:0,open:0,sales:0,rework:0,notstart:0,
                       od:0,nodue:0,delays:[],ontime:0,measured:0});
    d.all.push(r);
    if(!r._mbclosed){
      d.homes.push(r);
      if(r._sold==="Sold")d.sold++; else d.uns++;
-     if(r._mbopen)d.open++;
-     else if(/^in progress/i.test(r._prog))d.sales++;
+     if(PROG_OPEN.indexOf(r._prog)>=0)d.open++;
+     else if(PROG_NDS_SALES.indexOf(r._prog)>=0)d.sales++;
+     else if(PROG_NDS_REWORK.indexOf(r._prog)>=0)d.rework++;
      else d.notstart++;
      if(r._od)d.od++;
      if(r._nodue)d.nodue++;
@@ -706,22 +752,22 @@ function renderDlg(rows){
   '<b>On-time %</b> = share of those with delay &le; 0. '+
   'A home naming two POCs counts in full for each. <b>Click any row to see that person’s open homes.</b>';
  var h='<thead><tr><th></th><th>Member</th><th class="n band">Total homes</th><th class="n">Sold</th><th class="n">Unsold</th>'+
-  '<th class="n band">In progress</th><th class="n">With sales</th><th class="n">Not started</th>'+
+  '<th class="n band">In progress</th><th class="n">With sales</th><th class="n">Rework</th><th class="n">Not started</th>'+
   '<th class="n band">Past due</th><th class="n">Avg delay</th><th class="n">On-time %</th></tr></thead><tbody>';
- var t={total:0,sold:0,uns:0,open:0,sales:0,notstart:0,od:0};
+ var t={total:0,sold:0,uns:0,open:0,sales:0,rework:0,notstart:0,od:0};
  A.forEach(function(d,i){
-  ["total","sold","uns","open","sales","notstart","od"].forEach(function(k){t[k]+=d[k]});
+  ["total","sold","uns","open","sales","rework","notstart","od"].forEach(function(k){t[k]+=d[k]});
   h+='<tr class="clk" data-i="'+i+'" title="Show this person’s homes"><td class="sm" style="width:14px">&#9656;</td>'+
    '<td style="font-weight:700">'+esc(d.name)+'</td>'+
    '<td class="n band" style="font-weight:800">'+num(d.total)+'</td><td class="n">'+num(d.sold)+'</td><td class="n">'+num(d.uns)+'</td>'+
-   '<td class="n band w">'+num(d.open)+'</td><td class="n w">'+num(d.sales)+'</td><td class="n dash">'+num(d.notstart)+'</td>'+
+   '<td class="n band w">'+num(d.open)+'</td><td class="n w">'+num(d.sales)+'</td><td class="n r">'+num(d.rework)+'</td><td class="n dash">'+num(d.notstart)+'</td>'+
    '<td class="n band r">'+num(d.od)+'</td>'+
    '<td class="n">'+tatTxt(d.avg)+' <span class="sm">('+d.delays.length+')</span></td>'+
    '<td class="n">'+(d.pct===null?'<span class="dash">&mdash;</span>':'<span class="'+(d.pct>=60?"g":d.pct>=30?"w":"r")+'">'+d.pct+'%</span>')+
    ' <span class="sm">('+d.measured+')</span></td></tr>'});
  h+='<tr style="font-weight:800;border-top:2px solid var(--base)"><td></td><td>Total</td>'+
    '<td class="n band">'+t.total+'</td><td class="n">'+num(t.sold)+'</td><td class="n">'+num(t.uns)+'</td>'+
-   '<td class="n band w">'+num(t.open)+'</td><td class="n w">'+num(t.sales)+'</td><td class="n dash">'+num(t.notstart)+'</td>'+
+   '<td class="n band w">'+num(t.open)+'</td><td class="n w">'+num(t.sales)+'</td><td class="n r">'+num(t.rework)+'</td><td class="n dash">'+num(t.notstart)+'</td>'+
    '<td class="n band r">'+num(t.od)+'</td><td></td><td></td></tr>';
  document.getElementById("dlgTbl").innerHTML=h+'</tbody>';
  [].forEach.call(document.querySelectorAll("#dlgTbl tr.clk"),function(tr){tr.onclick=function(){
@@ -811,11 +857,12 @@ function renderIddm(rows){
   var n=r._iddm; if(!n)return;
   var key=T(r.pod)+"||"+T(r.lead)+"||"+n;
   var d=P[key]||(P[key]={pod:T(r.pod)||"(no POD)",lead:T(r.lead)||"—",name:n,total:0,sold:0,uns:0,
-    notstart:0,open:0,sales:0,od:0,delays:[]});
+    notstart:0,open:0,sales:0,rework:0,od:0,delays:[]});
   if(!r._mbclosed){                     /* live workload only */
    d.total++; if(r._sold==="Sold")d.sold++; else d.uns++;
-   if(r._mbopen)d.open++;
-   else if(/^in progress/i.test(r._prog))d.sales++;
+   if(PROG_OPEN.indexOf(r._prog)>=0)d.open++;
+   else if(PROG_NDS_SALES.indexOf(r._prog)>=0)d.sales++;
+   else if(PROG_NDS_REWORK.indexOf(r._prog)>=0)d.rework++;
    else d.notstart++;
    if(r._od)d.od++;
   }
@@ -827,24 +874,24 @@ function renderIddm(rows){
  arr.forEach(function(d){var g=d.pod+"||"+d.lead; (groups[g]=groups[g]||[]).push(d)});
  var gk=Object.keys(groups).sort();
  var h='<thead><tr><th>Designer</th><th class="n band">Total homes</th><th class="n">Sold</th><th class="n">Unsold</th>'+
-  '<th class="n band">Not started</th><th class="n">In progress</th><th class="n">With sales</th>'+
+  '<th class="n band">Not started</th><th class="n">In progress</th><th class="n">With sales</th><th class="n">Rework</th>'+
   '<th class="n band">Past due</th><th class="n">Avg delay</th><th class="n">Load</th></tr></thead><tbody>';
- var t={total:0,sold:0,uns:0,notstart:0,open:0,sales:0,od:0};
+ var t={total:0,sold:0,uns:0,notstart:0,open:0,sales:0,rework:0,od:0};
  gk.forEach(function(g){
   var p=g.split("||"), list=groups[g].sort(function(a,b){return b.total-a.total});
-  h+='<tr class="grp"><td colspan="10">'+esc(p[0])+' &middot; Lead: '+esc(p[1])+' &middot; '+list.length+' designer'+(list.length>1?"s":"")+'</td></tr>';
+  h+='<tr class="grp"><td colspan="11">'+esc(p[0])+' &middot; Lead: '+esc(p[1])+' &middot; '+list.length+' designer'+(list.length>1?"s":"")+'</td></tr>';
   list.forEach(function(d){
-   ["total","sold","uns","notstart","open","sales","od"].forEach(function(k){t[k]+=d[k]});
+   ["total","sold","uns","notstart","open","sales","rework","od"].forEach(function(k){t[k]+=d[k]});
    var band=d.total>=LOAD_BANDS.high?["HIGH","var(--crit)"]:d.total>=LOAD_BANDS.moderate?["MODERATE","var(--warn)"]:["LOW","var(--muted)"];
    h+='<tr><td style="font-weight:600">'+esc(d.name)+'</td>'+
     '<td class="n band" style="font-weight:800">'+num(d.total)+'</td><td class="n">'+num(d.sold)+'</td><td class="n">'+num(d.uns)+'</td>'+
-    '<td class="n band dash">'+num(d.notstart)+'</td><td class="n w">'+num(d.open)+'</td><td class="n w">'+num(d.sales)+'</td>'+
+    '<td class="n band dash">'+num(d.notstart)+'</td><td class="n w">'+num(d.open)+'</td><td class="n w">'+num(d.sales)+'</td><td class="n r">'+num(d.rework)+'</td>'+
     '<td class="n band r">'+num(d.od)+'</td>'+
     '<td class="n">'+tatTxt(d.avg)+' <span class="sm">('+d.delays.length+')</span></td>'+
     '<td class="n"><span class="pill" style="color:'+band[1]+'">'+band[0]+'</span></td></tr>'})});
  h+='<tr style="font-weight:800;border-top:2px solid var(--base)"><td>Total</td>'+
    '<td class="n band">'+t.total+'</td><td class="n">'+num(t.sold)+'</td><td class="n">'+num(t.uns)+'</td>'+
-   '<td class="n band dash">'+num(t.notstart)+'</td><td class="n w">'+num(t.open)+'</td><td class="n w">'+num(t.sales)+'</td>'+
+   '<td class="n band dash">'+num(t.notstart)+'</td><td class="n w">'+num(t.open)+'</td><td class="n w">'+num(t.sales)+'</td><td class="n r">'+num(t.rework)+'</td>'+
    '<td class="n band r">'+num(t.od)+'</td><td></td><td></td></tr>';
  document.getElementById("iddm").innerHTML=h+'</tbody>';
 }
