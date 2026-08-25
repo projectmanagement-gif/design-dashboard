@@ -37,6 +37,20 @@ h3{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--gol
 .kpi .v{font-family:Georgia,"Times New Roman",serif;font-size:33px;font-weight:700;margin:5px 0 4px;letter-spacing:-.02em}
 .kpi .sp{border-top:1px dashed var(--base);padding-top:5px;font-size:10.5px;color:var(--ink2);line-height:1.5}
 .kpi .sp b{color:var(--ink);font-weight:700}
+.kpi.clickable{cursor:pointer;position:relative;transition:border-color .12s,transform .08s}
+.kpi.clickable:hover{border-color:var(--gold);transform:translateY(-1px)}
+.kpi.clickable::after{content:"\25B8";position:absolute;right:7px;top:5px;font-size:9px;color:var(--muted)}
+.kpi.on{background:var(--shade);box-shadow:inset 0 0 0 1px var(--gold)}
+.kpi.on::after{content:"\25BE";color:var(--gold)}
+#kpiDrill{margin:10px 0 4px}
+.drill{border:1px solid var(--gold);border-radius:7px;overflow:hidden}
+.drillhd{display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--shade);flex-wrap:wrap}
+.drillhd .t{font-weight:800;font-size:13px}
+.drillbody{padding:2px 10px 12px;overflow-x:auto}
+.drill table{font-size:11.5px}
+.drill th{font-size:8.5px;white-space:nowrap;position:sticky;top:0;background:var(--s1)}
+.drill td{padding:5px 6px;white-space:nowrap}
+.drill td.wrap{white-space:normal;min-width:190px;max-width:280px}
 .scope{font-size:11px;color:var(--ink2);background:var(--shade);border-radius:5px;padding:9px 12px;line-height:1.65;margin-bottom:4px}
 .filters{display:flex;gap:7px;flex-wrap:wrap;align-items:center;border:1px solid var(--border);border-radius:7px;padding:9px 11px;margin:16px 0 4px;background:var(--shade)}
 .filters label{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:800}
@@ -98,6 +112,8 @@ footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--base);font-si
  <div id="msg"></div>
  <div class="risk" id="risk"></div>
  <div class="kpis" id="kpis"></div>
+ <div class="sm" id="kpiHint" style="text-align:right;margin:5px 2px 0"></div>
+ <div id="kpiDrill"></div>
  <div class="scope" id="scope"></div>
 
  <div class="filters">
@@ -213,6 +229,7 @@ var ALIAS = {
 
 /* ================================================================ */
 var RAW=[], Q=[], VIEW=[], HANDED=[], FETCHED=null, TIMER=null;
+var KPIOPEN=null, KPISETS=[];   // which KPI card is expanded, and what sits behind each
 var tip=document.getElementById("tip");
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function T(v){return String(v==null?"":v).trim()}
@@ -426,19 +443,31 @@ function renderKpis(rows){
  var onT=compM.filter(function(r){return r._delay<=0}).length;
  var pct=compM.length?Math.round(100*onT/compM.length):null;
  var noDD=done.length-compM.length;
+ /* Each card carries the exact set of homes behind its number, so clicking it
+    opens that list and the two can never disagree. */
  var cards=[
-  ["Live homes",tot,"<b>"+sold+"</b> sold<br><b>"+(tot-sold)+"</b> unsold past PC","var(--ink)"],
-  ["MB closed (Ops)",done.length,"<b>"+doneA+"</b> completed<br><b>"+doneB+"</b> post MB closure","var(--good)"],
-  ["MB open",open.length,"PROGRESS = In Progress<br><b>"+withSales+"</b> more are with sales","var(--warn)"],
+  ["Live homes",tot,"<b>"+sold+"</b> sold<br><b>"+(tot-sold)+"</b> unsold past PC","var(--ink)",
+    rows,"every home in scope"],
+  ["MB closed (Ops)",done.length,"<b>"+doneA+"</b> completed<br><b>"+doneB+"</b> post MB closure","var(--good)",
+    done,"PROGRESS is Completed or Post MB Closure"],
+  ["MB open",open.length,"PROGRESS = In Progress<br><b>"+withSales+"</b> more are with sales","var(--warn)",
+    open,"PROGRESS is In Progress"],
   ["MB crossed due date "+FY_LABEL,fy.length,
     (fyAvg===null?"no Delay Days data":"<b>"+(fyAvg>0?"+":"")+Math.round(fyAvg*10)/10+"d</b> avg Delay Days")+
-    "<br><b>"+fyLate+"</b> ran late","var(--crit)"],
+    "<br><b>"+fyLate+"</b> ran late","var(--crit)",
+    fy,"MB Closure PROJECTED falls inside "+FY_LABEL+" (1 Apr 2026 – 31 Mar 2027)"],
   ["Closed on time",pct===null?"&mdash;":pct+"%",
     "<b>"+onT+"</b> of "+compM.length+" closed had<br>Delay Days &le; 0"+
-    (noDD?" · "+noDD+" unmeasurable":""),"var(--blue)"]];
- document.getElementById("kpis").innerHTML=cards.map(function(c){
-  return '<div class="kpi" style="border-top-color:'+c[3]+'"><div class="l">'+c[0]+'</div>'+
+    (noDD?" · "+noDD+" unmeasurable":""),"var(--blue)",
+    compM.filter(function(r){return r._delay<=0}),"MB closed and Delay Days is 0 or negative"]];
+ KPISETS=cards.map(function(c){return {title:c[0],set:c[4],why:c[5],col:c[3]}});
+ document.getElementById("kpis").innerHTML=cards.map(function(c,i){
+  return '<div class="kpi clickable'+(KPIOPEN===i?" on":"")+'" data-i="'+i+'" style="border-top-color:'+c[3]+'">'+
+   '<div class="l">'+c[0]+'</div>'+
    '<div class="v" style="color:'+c[3]+'">'+c[1]+'</div><div class="sp">'+c[2]+'</div></div>'}).join("");
+ [].forEach.call(document.querySelectorAll("#kpis .kpi.clickable"),function(el){
+  el.onclick=function(){var i=+el.dataset.i; KPIOPEN=(KPIOPEN===i)?null:i; renderKpis(rows); renderKpiDrill()}});
+ renderKpiDrill();
  document.getElementById("scope").innerHTML=
   '<b>Scope:</b> homes at <b>Project Stage Ops = HO or "-" are excluded from everything on this page</b> &mdash; that is a hard rule. '+
   'Of what remains: all <b>Sold</b> homes ('+sold+') plus <b>Unsold</b> homes past PC '+
@@ -454,6 +483,83 @@ function renderKpis(rows){
   'which keeps running on open moodboards &mdash; a negative value means days of runway still left, positive means already over. '+
   '<b>PC Date</b> and <b>Handover Date</b> each use the <b>Actual</b> column where it is filled and the <b>Budgeted</b> column otherwise.';
 }
+/* ---------- KPI drill-down ---------- */
+function dnum(v){var n=fnum(v); return n===null?'<span class="dash">&mdash;</span>':Math.round(n)}
+function kpiTable(rows){
+ var d=rows.slice().sort(function(a,b){
+   var x=(a._delay===null)?-1e9:a._delay, y=(b._delay===null)?-1e9:b._delay;
+   if(y!==x)return y-x;                       // most delayed first
+   return (a._label>b._label?1:-1)});
+ var h='<table><thead><tr>'+
+  '<th>Home</th><th>Property</th><th class="n">Sold</th><th>DLG POC &mdash; Moodboard</th><th>Design Status</th>'+
+  '<th class="n">Brief Date</th><th class="n">NDS Approved R0</th><th class="n">Client Approved</th>'+
+  '<th class="n">PC Budgeted</th><th class="n">PC Actual</th>'+
+  '<th class="n">Days since<br>last update</th><th class="n">Actual MB<br>Closure TAT</th><th class="n">Delay Days</th>'+
+  '<th class="n">Ops</th><th class="n">Handover</th><th>Remarks</th><th>Client Requirements</th>'+
+  '</tr></thead><tbody>';
+ d.forEach(function(r){
+  var ho=r._ho?fmtd(r._ho)+(r._hoIsActual?"":'<span class="dash"> bud</span>'):'<span class="dash">&mdash;</span>';
+  var dl=(r._delay===null)?'<span class="dash">&mdash;</span>'
+        :'<span class="'+(r._delay>0?"r":"g")+'">'+(r._delay>0?"+":"")+Math.round(r._delay)+'</span>';
+  var rem=T(r.rem), req=T(r.req);
+  h+='<tr>'+
+   '<td style="font-weight:600">'+esc(r._label)+'</td>'+
+   '<td>'+esc(T(r.prop))+'</td>'+
+   '<td class="n">'+esc(r._sold||"—")+'</td>'+
+   '<td>'+esc(T(r.dlg)||"—")+'</td>'+
+   '<td class="sm">'+esc(T(r.ds)||"—")+'</td>'+
+   '<td class="n sm">'+(r._brief?fmtd(r._brief):'<span class="dash">&mdash;</span>')+'</td>'+
+   '<td class="n sm">'+(r._nds?'<span class="g">'+fmtd(r._nds)+'</span>':'<span class="dash">&mdash;</span>')+'</td>'+
+   '<td class="n sm">'+(pd(r.cxappr)?fmtd(pd(r.cxappr)):'<span class="dash">&mdash;</span>')+'</td>'+
+   '<td class="n sm">'+(pd(r.pcbud)?fmtd(pd(r.pcbud)):'<span class="dash">&mdash;</span>')+'</td>'+
+   '<td class="n sm">'+(pd(r.pcact)?fmtd(pd(r.pcact)):'<span class="dash">&mdash;</span>')+'</td>'+
+   '<td class="n sm">'+dnum(r.daysupd)+'</td>'+
+   '<td class="n sm">'+dnum(r.atat)+'</td>'+
+   '<td class="n" style="font-weight:700">'+dl+'</td>'+
+   '<td class="n sm">'+esc(T(r.ops)||"—")+'</td>'+
+   '<td class="n sm">'+ho+'</td>'+
+   '<td class="wrap sm" data-t="'+esc(rem)+'">'+esc(rem.slice(0,150))+(rem.length>150?"…":"")+'</td>'+
+   '<td class="wrap sm" data-t="'+esc(req)+'">'+esc(req.slice(0,150))+(req.length>150?"…":"")+'</td>'+
+   '</tr>'});
+ return h+'</tbody></table>'}
+
+function renderKpiDrill(){
+ var el=document.getElementById("kpiDrill");
+ if(KPIOPEN===null||!KPISETS[KPIOPEN]){el.innerHTML="";return}
+ var k=KPISETS[KPIOPEN];
+ el.innerHTML='<div class="drill"><div class="drillhd">'+
+   '<span class="t" style="color:'+k.col+'">'+esc(k.title)+'</span>'+
+   '<span class="sm">'+k.set.length+' home'+(k.set.length===1?"":"s")+' &middot; '+esc(k.why)+
+   ' &middot; sorted by Delay Days, most delayed first</span>'+
+   '<button class="btn" id="kpiClose" style="margin-left:auto">Close</button>'+
+   '<button class="btn" id="kpiCsv">Download CSV</button></div>'+
+   '<div class="drillbody">'+(k.set.length?kpiTable(k.set):'<div class="sm" style="padding:10px 2px">No homes in this group.</div>')+'</div></div>';
+ document.getElementById("kpiClose").onclick=function(){KPIOPEN=null;apply()};
+ document.getElementById("kpiCsv").onclick=function(){downloadKpiCsv(k)};
+ bindTips("#kpiDrill [data-t]");
+ el.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function csvCell(v){v=String(v==null?"":v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function downloadKpiCsv(k){
+ var head=["Home","Property","Sold","DLG POC - Moodboard","Design Status","Brief Date","NDS Approved R0",
+  "Client Approved","PC Budgeted Date","PC Actual Date","Days since last update","ACTUAL MB Closure TAT (Days)",
+  "Delay Days","Project Stage Ops","Handover Date","Handover source","Remarks","Client Requirements"];
+ var lines=[head.map(csvCell).join(",")];
+ k.set.forEach(function(r){
+  lines.push([r._label,T(r.prop),r._sold,T(r.dlg),T(r.ds),
+   r._brief?fmtd(r._brief):"", r._nds?fmtd(r._nds):"", pd(r.cxappr)?fmtd(pd(r.cxappr)):"",
+   pd(r.pcbud)?fmtd(pd(r.pcbud)):"", pd(r.pcact)?fmtd(pd(r.pcact)):"",
+   T(r.daysupd),T(r.atat),(r._delay===null?"":Math.round(r._delay)),T(r.ops),
+   r._ho?fmtd(r._ho):"", r._ho?(r._hoIsActual?"ACTUAL":"BUDGETED"):"",
+   T(r.rem),T(r.req)].map(csvCell).join(","))});
+ var blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+ var a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download=k.title.replace(/[^A-Za-z0-9]+/g,"-").replace(/^-|-$/g,"")+".csv";
+ document.body.appendChild(a); a.click(); document.body.removeChild(a);
+ setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+}
+
 function renderRisk(rows){
  var open=rows.filter(function(r){return !r._mbclosed}).length;
  var od=rows.filter(function(r){return r._od}).length;
@@ -868,6 +974,7 @@ function apply(){
   return true};
  VIEW=Q.filter(f);
  document.getElementById("count").textContent=VIEW.length+" of "+Q.length+" live homes";
+ document.getElementById("kpiHint").textContent=KPIOPEN===null?"Click any card to list the homes behind it":"";
  renderKpis(VIEW); renderRisk(VIEW); renderPhase(VIEW); renderPodLoad(VIEW); renderHo(VIEW);
  renderDs(VIEW); renderDlg(VIEW); renderPocHomes(VIEW); renderIddm(VIEW);
  renderLeadership(VIEW); renderGaps(VIEW);
